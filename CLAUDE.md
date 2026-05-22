@@ -12,11 +12,12 @@ Private AzerothCore (WotLK 3.3.5a) server for a small friend group, focused on s
 
 | Setting | Value |
 |---|---|
-| Server path | `~/azerothcore-wotlk` |
-| SSH target | defined in `.env` (see `.env.example`) |
-| MySQL access | TBD — fill in `.env` when confirmed |
+| Server path | `/root/azerothcore-wotlk` |
+| SSH target | `root@azerothcore` (Tailscale) |
+| MySQL | `acore`/`acore` on `127.0.0.1:3306` |
+| DBs | `acore_world`, `acore_characters`, `acore_auth` |
 
-> Never commit `.env`. It contains real credentials and host info.
+> Credentials are in `.env` (gitignored). Never commit `.env`.
 
 ## Active Modules
 
@@ -24,7 +25,7 @@ Private AzerothCore (WotLK 3.3.5a) server for a small friend group, focused on s
 |---|---|
 | `mod-autobalance` | Scales creature difficulty to group size |
 | `mod-aoe-loot` | Area-of-effect looting on nearby corpses |
-| `mod-arac` | Allows all races to play all classes |
+| `mod-arac` | Allows all races to play all classes (SQL + DBC + client Patch-A.MPQ) |
 
 Module config files live in `config/modules/`.
 
@@ -59,47 +60,81 @@ wotlk/
 sql/migrations/<db>/<NNNN>_<up|down>_<short_description>.sql
 ```
 
-Examples:
-```
-sql/migrations/world/0001_up_add_custom_vendor.sql
-sql/migrations/world/0001_down_add_custom_vendor.sql
-sql/migrations/characters/0001_up_add_player_titles.sql
-sql/migrations/characters/0001_down_add_player_titles.sql
-```
-
 Rules:
 - Numbers are zero-padded to 4 digits and sequential within each DB folder
 - Every `_up_` file **must** have a matching `_down_` file
 - `_up_` files should be idempotent where possible (use `INSERT IGNORE`, `UPDATE ... WHERE NOT EXISTS`, etc.)
 - `_down_` files must cleanly undo exactly what the `_up_` did
 
-### Migration tracking
-
-Applied migrations are recorded in a `schema_migrations` table created automatically on first run in each DB:
-
-```sql
-CREATE TABLE IF NOT EXISTS `schema_migrations` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `migration` VARCHAR(255) NOT NULL UNIQUE,
-  `applied_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
-);
-```
-
 ### Workflow
 
 ```bash
-# See what's pending
-./scripts/status.sh world
+./scripts/status.sh world          # see what's pending
+./scripts/deploy.sh world          # apply pending migrations
+./scripts/rollback.sh world        # undo last migration (interactive prompt)
+./scripts/rollback.sh world --yes  # skip prompt (used by Claude for testing)
+./scripts/deploy.sh --all          # migrations + rsync configs to server
+```
 
-# Apply all pending migrations
-./scripts/deploy.sh world
+### Module SQL dependencies
 
-# Roll back the last applied migration
-./scripts/rollback.sh world
+When a module is installed, always check for SQL files it needs:
 
-# Apply + sync configs in one go
-./scripts/deploy.sh --all
+```bash
+find ~/azerothcore-wotlk/modules/<mod-name>/data/sql -name "*.sql"
+```
+
+Missing module SQL is a common source of crashes. For example, `mod-aoe-loot` required
+`module_string` entries that were absent — causing a null pointer crash on every login.
+Always apply module SQL via a migration in this repo, not directly.
+
+## Server Management
+
+### Normal restart
+
+```bash
+# In the worldserver console (via tmux):
+server restart 5
+```
+
+The server runs under `acore.sh run-worldserver` → `simple-restarter` → `starter` → `worldserver`.
+The restarter loop catches non-zero exits and relaunches automatically. `server restart` exits
+with code 0, which triggers a clean relaunch.
+
+### Tmux sessions
+
+| Session | Process |
+|---|---|
+| `world-session` | worldserver |
+| `auth-session` | authserver |
+
+```bash
+# Attach to worldserver console
+ssh root@azerothcore 'tmux attach -t world-session'
+
+# Send a command without attaching
+ssh root@azerothcore 'tmux send-keys -t world-session "server restart 5" Enter'
+```
+
+### Debugging crashes (GDB mode)
+
+To capture a stack trace on crash, restart with GDB enabled:
+
+```bash
+ssh root@azerothcore 'tmux send-keys -t world-session "server shutdown 5" Enter'
+# wait for shutdown, then:
+ssh root@azerothcore 'tmux send-keys -t world-session "bash ~/azerothcore-wotlk/apps/startup-scripts/src/simple-restarter ~/azerothcore-wotlk/env/dist/bin worldserver ~/azerothcore-wotlk/apps/startup-scripts/src/gdb.conf \"\" \"\" \"\" 1 ~/azerothcore-wotlk/env/dist/bin/crashes" Enter'
+```
+
+Stack trace is written to `~/azerothcore-wotlk/env/dist/bin/crashes/gdb-crash.txt`.
+
+> **Note:** In GDB mode, `server restart` causes a clean shutdown (exit 0) and the restarter
+> will **not** relaunch. Use `server shutdown` instead, then start manually.
+
+After debugging, switch back to the normal restarter:
+
+```bash
+ssh root@azerothcore 'tmux send-keys -t world-session "cd ~/azerothcore-wotlk && ./acore.sh run-worldserver" Enter'
 ```
 
 ## Working with Claude
@@ -108,16 +143,13 @@ CREATE TABLE IF NOT EXISTS `schema_migrations` (
 
 - Write SQL migration pairs (up + down) for any game content changes
 - Review and suggest edits to config files
-- Run `scripts/` over SSH — I'll always show you the command before executing
-- Help debug issues by reading server logs over SSH
+- Run scripts and SSH commands — I'll always show you the command before executing
+- Debug server crashes using GDB stack traces and logs
 
 ### Conventions I follow
 
 - **Always write the `_down_` file before suggesting you run the `_up_`** — rollback first
-- **I won't run destructive commands without explicit confirmation** — even if you've said "go ahead" earlier
+- **I won't run destructive commands without explicit confirmation**
 - **Config changes go in the repo first**, then get synced — no editing files directly on the server
 - **One migration = one logical change** — I'll split unrelated changes into separate numbered files
-
-### SSH access
-
-SSH is configured via `.env`. When I need to run something on the server I'll prefix it with the command I'm about to run so you can review it. You control execution.
+- **Module SQL goes through the migration system** — never apply directly to the server
