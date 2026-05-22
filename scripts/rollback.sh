@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # rollback.sh — undo the last applied migration for a given DB
-# Usage: ./scripts/rollback.sh <world|characters|auth>
+# Usage: ./scripts/rollback.sh <world|characters|auth> [--yes]
+#   --yes  skip the confirmation prompt (use for scripting/testing)
 
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -16,8 +17,10 @@ fi
 SSH_CMD="ssh ${SSH_USER}@${SSH_HOST}${SSH_KEY:+ -i $SSH_KEY}"
 
 db_key="${1:-}"
+auto_yes="${2:-}"
+
 if [[ -z "$db_key" ]]; then
-  echo "Usage: $0 <world|characters|auth>"
+  echo "Usage: $0 <world|characters|auth> [--yes]"
   exit 1
 fi
 
@@ -45,8 +48,11 @@ fi
 
 echo "Rolling back: $last"
 echo "Running:      $down_name"
-read -rp "Proceed? [y/N] " confirm
-[[ "$confirm" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 0; }
+
+if [[ "$auto_yes" != "--yes" ]]; then
+  read -rp "Proceed? [y/N] " confirm
+  [[ "$confirm" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 0; }
+fi
 
 $SSH_CMD "mysql -h$DB_HOST -P$DB_PORT -u$DB_USER -p$DB_PASS $db_name" < "$down_file"
 $SSH_CMD "mysql -h$DB_HOST -P$DB_PORT -u$DB_USER -p$DB_PASS -e \
