@@ -4,17 +4,20 @@
 #include "GameEventMgr.h"
 #include "GossipDef.h"
 #include "Player.h"
+#include "Random.h"
 #include "ScriptedGossip.h"
 
 // Mirror the constants from npc_innkeeper.cpp so we build the menu identically
 constexpr uint32 HALLOWEEN_EVENTID        = 12;
 constexpr uint32 GOSSIP_MENU_INNKEEPER    = 9733;   // standard inn-bind / vendor items
 constexpr uint32 GOSSIP_MENU_HALLOWEEN    = 342;    // "Trick or Treat!" item
+constexpr uint32 SPELL_TRICK              = 24714;
+constexpr uint32 SPELL_TREAT              = 24715;
 constexpr uint32 SPELL_TRICKED_OR_TREATED = 24755;
 
-// Boost-specific sender tags (distinct from GOSSIP_SENDER_MAIN=1 and GOSSIP_SENDER_MAIN=2 etc.)
-constexpr uint32 SENDER_BOOST      = 20;   // Level boost submenu (using 20 to avoid collisions)
-constexpr uint32 ACTION_BOOST_MENU = 100;  // Show level-boost submenu
+// Boost-specific sender/action (use values well outside npc_innkeeper's range)
+constexpr uint32 SENDER_BOOST      = 20;    // Level boost submenu
+constexpr uint32 ACTION_BOOST_MENU = 100;   // Open the level-boost submenu
 
 // Returns the highest level of any character on the account,
 // or 0 if the query fails.
@@ -91,7 +94,7 @@ public:
         if (!creature->IsInnkeeper())
             return false;
 
-        // Show boost submenu
+        // ---- Boost submenu ------------------------------------------------
         if (sender == GOSSIP_SENDER_MAIN && action == ACTION_BOOST_MENU)
         {
             ClearGossipMenuFor(player);
@@ -114,7 +117,7 @@ public:
             return true;
         }
 
-        // Apply boost
+        // ---- Apply boost --------------------------------------------------
         if (sender == SENDER_BOOST)
         {
             uint8  targetLevel = static_cast<uint8>(action);
@@ -134,9 +137,41 @@ public:
             return true;
         }
 
-        // Everything else (inn bind, vendor, Trick or Treat, quests) —
-        // let npc_innkeeper::OnGossipSelect handle it with the correct actions.
-        return false;
+        // ---- Standard innkeeper actions -----------------------------------
+        // Handled here so they work regardless of whether the creature has the
+        // npc_innkeeper CreatureScript (only ~53 of 125 innkeepers do).
+
+        ClearGossipMenuFor(player);
+
+        if (sender == GOSSIP_SENDER_MAIN && action == GOSSIP_ACTION_TRADE)
+        {
+            CloseGossipMenuFor(player);
+            player->GetSession()->SendListInventory(creature->GetGUID());
+            return true;
+        }
+
+        if (sender == GOSSIP_SENDER_MAIN && action == GOSSIP_ACTION_INN)
+        {
+            CloseGossipMenuFor(player);
+            player->SetBindPoint(creature->GetGUID());
+            return true;
+        }
+
+        if (sender == GOSSIP_SENDER_MAIN && action == static_cast<uint32>(GOSSIP_ACTION_INFO_DEF) + HALLOWEEN_EVENTID)
+        {
+            if (IsEventActive(HALLOWEEN_EVENTID) && !player->HasAura(SPELL_TRICKED_OR_TREATED))
+            {
+                player->CastSpell(player, SPELL_TRICKED_OR_TREATED, true);
+                creature->CastSpell(player, urand(0, 1) ? SPELL_TRICK : SPELL_TREAT, true);
+            }
+            CloseGossipMenuFor(player);
+            return true;
+        }
+
+        // Quest options are handled by the quest system (different packet),
+        // so any remaining unrecognised action just closes the window.
+        CloseGossipMenuFor(player);
+        return true;
     }
 };
 
