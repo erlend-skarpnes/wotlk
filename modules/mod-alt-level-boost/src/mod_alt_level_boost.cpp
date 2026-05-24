@@ -1,4 +1,5 @@
 #include "AllCreatureScript.h"
+#include "Chat.h"
 #include "DatabaseEnv.h"
 #include "GossipDef.h"
 #include "Player.h"
@@ -7,8 +8,6 @@
 constexpr uint32 SENDER_MAIN       = 1;   // Main gossip menu
 constexpr uint32 SENDER_BOOST      = 2;   // Level boost submenu
 
-constexpr uint32 ACTION_TRADE      = 1;   // GOSSIP_ACTION_TRADE — open vendor
-constexpr uint32 ACTION_INN        = 7;   // GOSSIP_ACTION_INN   — set hearthstone
 constexpr uint32 ACTION_BOOST_MENU = 100; // Show level-boost submenu
 
 // Returns the highest level of any character on the account,
@@ -41,28 +40,21 @@ public:
         if (!creature->IsInnkeeper())
             return false;
 
-        ClearGossipMenuFor(player);
+        // Populate quests, DB gossip options, inn-bind, vendor — everything the core would do
+        player->PrepareGossipMenu(creature, creature->GetGossipMenuId(), /*showQuests=*/true);
 
-        // Re-add standard innkeeper options that we're taking over from the core script
-        if (creature->IsInnkeeper())
-            AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Make this inn your home.", SENDER_MAIN, ACTION_INN);
-
-        if (creature->IsVendor())
-            AddGossipItemFor(player, GOSSIP_ICON_VENDOR, "Let me browse your goods.", SENDER_MAIN, ACTION_TRADE);
-
-        // Add level-boost option if any eligible levels exist
+        // Append boost option if the account has eligible levels
         uint32 accountId    = player->GetSession()->GetAccountId();
         uint8  accountMax   = GetAccountMaxLevel(accountId);
         uint8  boostCap     = MaxBoostLevel(accountMax);
         uint8  playerLevel  = player->GetLevel();
+        uint8  nextEligible = ((playerLevel / 5) + 1) * 5;
 
-        // Show the option only if there is at least one valid target level
-        // (a 5-level increment above the player's current level and within the cap)
-        uint8 nextEligible = ((playerLevel / 5) + 1) * 5;
         if (boostCap >= 5 && nextEligible <= boostCap)
-            AddGossipItemFor(player, GOSSIP_ICON_TRAINER, "I'd like to advance my character's level.", SENDER_MAIN, ACTION_BOOST_MENU);
+            AddGossipItemFor(player, GOSSIP_ICON_TRAINER,
+                "I'd like to advance my character's level.", SENDER_MAIN, ACTION_BOOST_MENU);
 
-        SendGossipMenuFor(player, player->GetGossipTextId(creature), creature);
+        player->SendPreparedGossip(creature);
         return true;
     }
 
@@ -71,70 +63,50 @@ public:
         if (!creature->IsInnkeeper())
             return false;
 
-        ClearGossipMenuFor(player);
-
-        if (sender == SENDER_MAIN)
+        // Show boost submenu
+        if (sender == SENDER_MAIN && action == ACTION_BOOST_MENU)
         {
-            switch (action)
+            ClearGossipMenuFor(player);
+
+            uint32 accountId   = player->GetSession()->GetAccountId();
+            uint8  accountMax  = GetAccountMaxLevel(accountId);
+            uint8  boostCap    = MaxBoostLevel(accountMax);
+            uint8  playerLevel = player->GetLevel();
+
+            for (uint8 lvl = 5; lvl <= boostCap; lvl += 5)
             {
-                case ACTION_INN:
-                    player->SetBindPoint(creature->GetGUID());
-                    CloseGossipMenuFor(player);
-                    break;
+                if (lvl <= playerLevel)
+                    continue;
 
-                case ACTION_TRADE:
-                    player->GetSession()->SendListInventory(creature->GetGUID());
-                    break;
-
-                case ACTION_BOOST_MENU:
-                {
-                    uint32 accountId   = player->GetSession()->GetAccountId();
-                    uint8  accountMax  = GetAccountMaxLevel(accountId);
-                    uint8  boostCap    = MaxBoostLevel(accountMax);
-                    uint8  playerLevel = player->GetLevel();
-
-                    for (uint8 lvl = 5; lvl <= boostCap; lvl += 5)
-                    {
-                        if (lvl <= playerLevel)
-                            continue;
-
-                        std::string label = "Advance to level " + std::to_string(lvl);
-                        AddGossipItemFor(player, GOSSIP_ICON_TRAINER, label, SENDER_BOOST, lvl);
-                    }
-
-                    SendGossipMenuFor(player, player->GetGossipTextId(creature), creature);
-                    break;
-                }
-
-                default:
-                    CloseGossipMenuFor(player);
-                    break;
+                AddGossipItemFor(player, GOSSIP_ICON_TRAINER,
+                    "Advance to level " + std::to_string(lvl), SENDER_BOOST, lvl);
             }
 
+            SendGossipMenuFor(player, player->GetGossipTextId(creature), creature);
             return true;
         }
 
+        // Apply boost
         if (sender == SENDER_BOOST)
         {
-            uint8 targetLevel = static_cast<uint8>(action);
-
-            // Validate: target must be higher than current level and within account cap
-            uint32 accountId  = player->GetSession()->GetAccountId();
-            uint8  accountMax = GetAccountMaxLevel(accountId);
-            uint8  boostCap   = MaxBoostLevel(accountMax);
+            uint8  targetLevel = static_cast<uint8>(action);
+            uint32 accountId   = player->GetSession()->GetAccountId();
+            uint8  accountMax  = GetAccountMaxLevel(accountId);
+            uint8  boostCap    = MaxBoostLevel(accountMax);
 
             if (targetLevel > player->GetLevel() && targetLevel <= boostCap && targetLevel % 5 == 0)
             {
                 player->GiveLevel(targetLevel);
                 player->SetUInt32Value(PLAYER_XP, 0);
-                ChatHandler(player->GetSession()).PSendSysMessage(
-                    "|cff00ff00You have been advanced to level %u!|r", targetLevel);
+                ChatHandler(player->GetSession()).SendSysMessage(
+                    "|cff00ff00You have been advanced to level " + std::to_string(targetLevel) + "!|r");
             }
 
             CloseGossipMenuFor(player);
             return true;
         }
 
+        // Everything else (inn bind, vendor, quests, DB options) — let the core handle it
         return false;
     }
 };
