@@ -1,14 +1,20 @@
 #include "AllCreatureScript.h"
 #include "Chat.h"
 #include "DatabaseEnv.h"
+#include "GameEventMgr.h"
 #include "GossipDef.h"
 #include "Player.h"
 #include "ScriptedGossip.h"
 
-constexpr uint32 SENDER_MAIN       = 1;   // Main gossip menu
-constexpr uint32 SENDER_BOOST      = 2;   // Level boost submenu
+// Mirror the constants from npc_innkeeper.cpp so we build the menu identically
+constexpr uint32 HALLOWEEN_EVENTID        = 12;
+constexpr uint32 GOSSIP_MENU_INNKEEPER    = 9733;   // standard inn-bind / vendor items
+constexpr uint32 GOSSIP_MENU_HALLOWEEN    = 342;    // "Trick or Treat!" item
+constexpr uint32 SPELL_TRICKED_OR_TREATED = 24755;
 
-constexpr uint32 ACTION_BOOST_MENU = 100; // Show level-boost submenu
+// Boost-specific sender tags (distinct from GOSSIP_SENDER_MAIN=1 and GOSSIP_SENDER_MAIN=2 etc.)
+constexpr uint32 SENDER_BOOST      = 20;   // Level boost submenu (using 20 to avoid collisions)
+constexpr uint32 ACTION_BOOST_MENU = 100;  // Show level-boost submenu
 
 // Returns the highest level of any character on the account,
 // or 0 if the query fails.
@@ -40,10 +46,30 @@ public:
         if (!creature->IsInnkeeper())
             return false;
 
-        // Populate quests, DB gossip options, inn-bind, vendor — everything the core would do
-        player->PrepareGossipMenu(creature, creature->GetGossipMenuId(), /*showQuests=*/true);
+        // Start from a clean state (ClearGossipMenuFor clears both gossip and quest menus)
+        ClearGossipMenuFor(player);
 
-        // Append boost option if the account has eligible levels
+        // --- Exactly mirror npc_innkeeper::OnGossipHello ---
+
+        // Trick or Treat — seasonal Halloween event, only if not already done today
+        if (IsEventActive(HALLOWEEN_EVENTID) && !player->HasAura(SPELL_TRICKED_OR_TREATED))
+            AddGossipItemFor(player, GOSSIP_MENU_HALLOWEEN, 0,
+                GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + HALLOWEEN_EVENTID);
+
+        // Quest options (e.g. "Rest and Relaxation")
+        if (creature->IsQuestGiver())
+            player->PrepareQuestMenu(creature->GetGUID());
+
+        // Vendor stock
+        if (creature->IsVendor())
+            AddGossipItemFor(player, GOSSIP_MENU_INNKEEPER, 2,
+                GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
+
+        // Inn bind (all innkeepers)
+        AddGossipItemFor(player, GOSSIP_MENU_INNKEEPER, 1,
+            GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INN);
+
+        // --- Append level-boost option if the account has eligible levels ---
         uint32 accountId    = player->GetSession()->GetAccountId();
         uint8  accountMax   = GetAccountMaxLevel(accountId);
         uint8  boostCap     = MaxBoostLevel(accountMax);
@@ -52,9 +78,11 @@ public:
 
         if (boostCap >= 5 && nextEligible <= boostCap)
             AddGossipItemFor(player, GOSSIP_ICON_TRAINER,
-                "I'd like to advance my character's level.", SENDER_MAIN, ACTION_BOOST_MENU);
+                "I'd like to advance my character's level.",
+                GOSSIP_SENDER_MAIN, ACTION_BOOST_MENU);
 
-        player->SendPreparedGossip(creature);
+        player->TalkedToCreature(creature->GetEntry(), creature->GetGUID());
+        SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
         return true;
     }
 
@@ -64,7 +92,7 @@ public:
             return false;
 
         // Show boost submenu
-        if (sender == SENDER_MAIN && action == ACTION_BOOST_MENU)
+        if (sender == GOSSIP_SENDER_MAIN && action == ACTION_BOOST_MENU)
         {
             ClearGossipMenuFor(player);
 
@@ -82,7 +110,7 @@ public:
                     "Advance to level " + std::to_string(lvl), SENDER_BOOST, lvl);
             }
 
-            SendGossipMenuFor(player, player->GetGossipTextId(creature), creature);
+            SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
             return true;
         }
 
@@ -106,7 +134,8 @@ public:
             return true;
         }
 
-        // Everything else (inn bind, vendor, quests, DB options) — let the core handle it
+        // Everything else (inn bind, vendor, Trick or Treat, quests) —
+        // let npc_innkeeper::OnGossipSelect handle it with the correct actions.
         return false;
     }
 };
