@@ -1,3 +1,4 @@
 .env
 *.conf.bak
 *.conf.dist
+.claude/settings.local.json
