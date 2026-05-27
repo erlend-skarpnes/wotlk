@@ -358,8 +358,9 @@ ssh root@azerothcore 'tmux send-keys -t world-session "cd ~/azerothcore-wotlk &&
 
 - **Always write the `_down_` file before suggesting you run the `_up_`** — rollback first
 - **I won't run destructive commands without explicit confirmation**
-- **Always ask before restarting the worldserver** — players may be online
+- **Always check if anyone is online before deploying or restarting** — query `characters WHERE online = 1` first; never deploy or restart with players on the server
 - **Config changes go in the repo first**, then get synced — no editing files directly on the server
 - **One migration = one logical change** — I'll split unrelated changes into separate numbered files
 - **Module SQL goes through the migration system** — never apply directly to the server
 - **Each concern gets its own module** — don't add unrelated scripts to an existing module
+- **Keep the website features section in sync** — whenever a server modification is added, changed, or removed, update the "Server Features" section in `website/src/routes/+page.svelte` to reflect it in player-friendly language
