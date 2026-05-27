@@ -109,6 +109,110 @@
 	<div class="border-t border-gray-700/60"></div>
 </div>
 
+<!-- ── Server Features ────────────────────────────────────────────── -->
+<section class="px-6 pt-4 pb-4 max-w-7xl mx-auto">
+	<div class="flex items-center gap-3 mb-6">
+		<h2 class="medievalsharp-regular text-2xl text-amber-500 dark:text-amber-400">Server Features</h2>
+	</div>
+
+	<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+
+		<div class="bg-gray-800/60 border border-gray-700 rounded-lg px-4 py-3.5 flex gap-3">
+			<span class="text-2xl shrink-0 mt-0.5">⚔️</span>
+			<div>
+				<div class="text-sm font-semibold text-gray-100 mb-0.5">Boosted XP</div>
+				<div class="text-xs text-gray-400">Quests give 3× the normal XP. Killing monsters gives 1.5×. Level at your own pace without the grind.</div>
+			</div>
+		</div>
+
+		<div class="bg-gray-800/60 border border-gray-700 rounded-lg px-4 py-3.5 flex gap-3">
+			<span class="text-2xl shrink-0 mt-0.5">😴</span>
+			<div>
+				<div class="text-sm font-semibold text-gray-100 mb-0.5">Always Rested</div>
+				<div class="text-xs text-gray-400">Rested XP builds so fast you'll always have the bonus while playing. You'll also accumulate it twice as fast while logged out.</div>
+			</div>
+		</div>
+
+		<div class="bg-gray-800/60 border border-gray-700 rounded-lg px-4 py-3.5 flex gap-3">
+			<span class="text-2xl shrink-0 mt-0.5">✨</span>
+			<div>
+				<div class="text-sm font-semibold text-gray-100 mb-0.5">Double Talent Points</div>
+				<div class="text-xs text-gray-400">You earn twice as many talent points as normal, letting you fill out your talent trees faster and more freely.</div>
+			</div>
+		</div>
+
+		<div class="bg-gray-800/60 border border-gray-700 rounded-lg px-4 py-3.5 flex gap-3">
+			<span class="text-2xl shrink-0 mt-0.5">🎁</span>
+			<div>
+				<div class="text-sm font-semibold text-gray-100 mb-0.5">Increased Drop Rates</div>
+				<div class="text-xs text-gray-400">Common, Uncommon, Rare and Epic items all drop at 2× the normal rate. More loot, less frustration.</div>
+			</div>
+		</div>
+
+		<div class="bg-gray-800/60 border border-gray-700 rounded-lg px-4 py-3.5 flex gap-3">
+			<span class="text-2xl shrink-0 mt-0.5">🏅</span>
+			<div>
+				<div class="text-sm font-semibold text-gray-100 mb-0.5">10× Reputation</div>
+				<div class="text-xs text-gray-400">Faction reputation is earned at 10 times the normal rate. Unlock faction rewards and mounts much sooner.</div>
+			</div>
+		</div>
+
+		<div class="bg-gray-800/60 border border-gray-700 rounded-lg px-4 py-3.5 flex gap-3">
+			<span class="text-2xl shrink-0 mt-0.5">🦅</span>
+			<div>
+				<div class="text-sm font-semibold text-gray-100 mb-0.5">Faster Flight Paths</div>
+				<div class="text-xs text-gray-400">Taxis fly at twice the normal speed. Getting around the world is quicker without skipping the scenery.</div>
+			</div>
+		</div>
+
+		<div class="bg-gray-800/60 border border-gray-700 rounded-lg px-4 py-3.5 flex gap-3">
+			<span class="text-2xl shrink-0 mt-0.5">🗺️</span>
+			<div>
+				<div class="text-sm font-semibold text-gray-100 mb-0.5">Shared Flight Paths</div>
+				<div class="text-xs text-gray-400">Discovering a flight point on one character automatically unlocks it on all your other characters too.</div>
+			</div>
+		</div>
+
+		<div class="bg-gray-800/60 border border-gray-700 rounded-lg px-4 py-3.5 flex gap-3">
+			<span class="text-2xl shrink-0 mt-0.5">📬</span>
+			<div>
+				<div class="text-sm font-semibold text-gray-100 mb-0.5">Instant Mail</div>
+				<div class="text-xs text-gray-400">Mail between characters arrives in about a minute. Send gold and items to your alts without the wait.</div>
+			</div>
+		</div>
+
+		<div class="bg-gray-800/60 border border-gray-700 rounded-lg px-4 py-3.5 flex gap-3">
+			<span class="text-2xl shrink-0 mt-0.5">📈</span>
+			<div>
+				<div class="text-sm font-semibold text-gray-100 mb-0.5">Alt Level Boost</div>
+				<div class="text-xs text-gray-400">Talk to any innkeeper to boost an alt character up to within 5 levels of your highest character. Great for trying new classes.</div>
+			</div>
+		</div>
+
+		<div class="bg-gray-800/60 border border-gray-700 rounded-lg px-4 py-3.5 flex gap-3">
+			<span class="text-2xl shrink-0 mt-0.5">⚖️</span>
+			<div>
+				<div class="text-sm font-semibold text-gray-100 mb-0.5">Scaled Difficulty</div>
+				<div class="text-xs text-gray-400">Dungeons and encounters automatically scale to the size of your group, so solo play and small groups remain challenging and rewarding.</div>
+			</div>
+		</div>
+
+		<div class="bg-gray-800/60 border border-gray-700 rounded-lg px-4 py-3.5 flex gap-3">
+			<span class="text-2xl shrink-0 mt-0.5">🧬</span>
+			<div>
+				<div class="text-sm font-semibold text-gray-100 mb-0.5">Any Race, Any Class</div>
+				<div class="text-xs text-gray-400">Want a Gnome Druid or a Human Shaman? Any race and class combination is available, beyond the normal restrictions.</div>
+			</div>
+		</div>
+
+	</div>
+</section>
+
+<!-- ── Divider ────────────────────────────────────────────────────── -->
+<div class="max-w-7xl mx-auto px-6 py-2">
+	<div class="border-t border-gray-700/60"></div>
+</div>
+
 <!-- ── Roster ─────────────────────────────────────────────────────── -->
 <section class="px-6 pt-4 pb-12 max-w-7xl mx-auto">
 	<div class="flex items-center gap-3 mb-6">
