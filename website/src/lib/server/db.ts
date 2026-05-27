@@ -1,5 +1,5 @@
 import mysql from 'mysql2/promise';
-import { DB_HOST, DB_PASSWORD, DB_PORT, DB_USER } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -19,14 +19,21 @@ export interface Account {
 
 // ─── Connection pool ──────────────────────────────────────────────────────────
 
-const pool = mysql.createPool({
-	host: DB_HOST || 'localhost',
-	port: Number(DB_PORT) || 3306,
-	user: DB_USER,
-	password: DB_PASSWORD,
-	waitForConnections: true,
-	connectionLimit: 5
-});
+function getPool() {
+	return mysql.createPool({
+		host: env.DB_HOST || 'localhost',
+		port: Number(env.DB_PORT) || 3306,
+		user: env.DB_USER,
+		password: env.DB_PASSWORD,
+		waitForConnections: true,
+		connectionLimit: 5
+	});
+}
+
+let _pool: ReturnType<typeof mysql.createPool> | undefined;
+function pool() {
+	return (_pool ??= getPool());
+}
 
 // ─── Game data ────────────────────────────────────────────────────────────────
 
@@ -71,7 +78,7 @@ function mapRow(row: any): Character {
 
 /** Characters currently in-game, sorted by level desc. */
 export async function getOnlineCharacters(): Promise<Character[]> {
-	const [rows] = await pool.query(`
+	const [rows] = await pool().query(`
 		SELECT c.name, c.level, c.race, c.gender, c.class, 1 AS online
 		FROM acore_characters.characters c
 		JOIN acore_auth.account a ON a.id = c.account
@@ -86,7 +93,7 @@ export async function getOnlineCharacters(): Promise<Character[]> {
 
 /** All accounts with their characters, sorted by account name then level desc. */
 export async function getRoster(): Promise<Account[]> {
-	const [rows] = await pool.query(`
+	const [rows] = await pool().query(`
 		SELECT a.username, c.name, c.level, c.race, c.gender, c.class, c.online
 		FROM acore_auth.account a
 		JOIN acore_characters.characters c ON c.account = a.id
