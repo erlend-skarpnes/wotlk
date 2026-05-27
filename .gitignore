@@ -2,3 +2,6 @@
 *.conf.bak
 *.conf.dist
 .claude/settings.local.json
+website/.env
+website/node_modules/
+website/.svelte-kit/
