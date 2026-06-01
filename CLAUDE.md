@@ -312,6 +312,20 @@ Always apply module SQL via a migration in this repo, not directly.
 
 ## Server Management
 
+### Nightly restart (cron)
+
+The server restarts automatically at **3am every night** via a cron job on the server:
+
+```
+0 3 * * * /usr/bin/tmux send-keys -t world-session "server restart 5" Enter
+```
+
+> **Note:** This cron job lives only on the server (`crontab -e` as root) — it is not tracked in
+> this repo. If the server is ever rebuilt, re-add it with:
+> ```bash
+> ssh root@azerothcore "(crontab -l 2>/dev/null; echo '0 3 * * * /usr/bin/tmux send-keys -t world-session \"server restart 5\" Enter') | crontab -"
+> ```
+
 ### Normal restart
 
 ```bash
