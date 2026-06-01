@@ -20,6 +20,21 @@ Private AzerothCore (WotLK 3.3.5a) server for a small friend group, focused on s
 
 > Credentials are in `.env` (gitignored). Never commit `.env`.
 
+### Website DB user (`web`)
+
+The website connects as a read-only `web` user. It only has SELECT grants on specific tables — **when adding a new table the website queries, you must also grant SELECT on it:**
+
+```sql
+GRANT SELECT ON acore_world.<table> TO 'web'@'%';
+FLUSH PRIVILEGES;
+```
+
+Current grants beyond the default `acore_characters` and `acore_auth` tables:
+
+| Table | Granted |
+|---|---|
+| `acore_world.website_achievement_points` | ✓ |
+
 ## Active Modules
 
 ### Third-party (installed on server, not in this repo's `modules/`)
