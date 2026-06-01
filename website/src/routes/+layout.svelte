@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../app.css';
-	import { DarkMode, Navbar, NavBrand, ThemeProvider, type ThemeConfig, Heading } from 'flowbite-svelte';
+	import { DarkMode, Navbar, NavBrand, NavUl, NavLi, ThemeProvider, type ThemeConfig, Heading } from 'flowbite-svelte';
 
 	let { children } = $props();
 
@@ -20,6 +20,10 @@
 				<NavBrand href="/">
 					<Heading class="text-2xl">Azeroth</Heading>
 				</NavBrand>
+				<NavUl>
+					<NavLi href="/">Home</NavLi>
+					<NavLi href="/highscores">Highscores</NavLi>
+				</NavUl>
 				<DarkMode />
 			</Navbar>
 		</header>

@@ -17,6 +17,17 @@ export interface Account {
 	characters: Character[];
 }
 
+export interface HighscoreEntry {
+	rank: number;
+	name: string;
+	race: string;
+	gender: 'Male' | 'Female';
+	class: string;
+	level: number;
+	achievementPoints: number;
+	achievementCount: number;
+}
+
 // ─── Connection pool ──────────────────────────────────────────────────────────
 
 function getPool() {
@@ -89,6 +100,39 @@ export async function getOnlineCharacters(): Promise<Character[]> {
 		ORDER BY c.level DESC
 	`);
 	return (rows as any[]).map(mapRow);
+}
+
+/** Achievement points leaderboard, top 50 characters sorted by total points. */
+export async function getAchievementHighscores(): Promise<HighscoreEntry[]> {
+	const [rows] = await pool().query(`
+		SELECT
+			c.name, c.race, c.gender, c.class, c.level,
+			SUM(COALESCE(wap.points, 0)) AS achievement_points,
+			COUNT(ca.achievement)         AS achievement_count
+		FROM acore_characters.character_achievement ca
+		JOIN  acore_characters.characters c  ON c.guid = ca.guid
+		JOIN  acore_auth.account a           ON a.id   = c.account
+		LEFT JOIN acore_auth.account_access aa
+		      ON aa.id = a.id AND aa.RealmID = -1
+		LEFT JOIN acore_world.website_achievement_points wap
+		      ON wap.achievement_id = ca.achievement
+		WHERE (aa.gmlevel IS NULL OR aa.gmlevel = 0)
+		  AND a.username NOT LIKE 'RNDBOT%'
+		GROUP BY ca.guid, c.name, c.race, c.gender, c.class, c.level
+		HAVING achievement_points > 0
+		ORDER BY achievement_points DESC
+		LIMIT 50
+	`);
+	return (rows as any[]).map((row, i) => ({
+		rank: i + 1,
+		name: row.name,
+		race: RACES[row.race] ?? `Race ${row.race}`,
+		gender: row.gender === 0 ? 'Male' : 'Female',
+		class: CLASSES[row.class] ?? `Class ${row.class}`,
+		level: Number(row.level),
+		achievementPoints: Number(row.achievement_points),
+		achievementCount: Number(row.achievement_count)
+	}));
 }
 
 /** All accounts with their characters, sorted by account name then level desc. */

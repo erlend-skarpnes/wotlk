@@ -205,6 +205,14 @@
 			</div>
 		</div>
 
+		<div class="bg-gray-800/60 border border-gray-700 rounded-lg px-4 py-3.5 flex gap-3">
+			<span class="text-2xl shrink-0 mt-0.5">🏆</span>
+			<div>
+				<div class="text-sm font-semibold text-gray-100 mb-0.5">Achievement Highscores</div>
+				<div class="text-xs text-gray-400">Compete for glory on the <a href="/highscores" class="text-amber-500 hover:underline">highscores page</a> — characters are ranked by total achievement points earned.</div>
+			</div>
+		</div>
+
 	</div>
 </section>
 
