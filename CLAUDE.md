@@ -326,6 +326,62 @@ The server restarts automatically at **3am every night** via a cron job on the s
 > ssh root@azerothcore "(crontab -l 2>/dev/null; echo '0 3 * * * /usr/bin/tmux send-keys -t world-session \"server restart 5\" Enter') | crontab -"
 > ```
 
+### Boot autostart (systemd)
+
+Both servers start automatically on VM boot via systemd units (not tracked in this repo):
+
+| Unit | Controls |
+|---|---|
+| `acore-auth.service` | authserver in `auth-session` |
+| `acore-world.service` | worldserver in `world-session` |
+
+Both are enabled (`WantedBy=multi-user.target`) and start after MySQL. If the VM is rebuilt, recreate them:
+
+```bash
+# /etc/systemd/system/acore-auth.service
+[Unit]
+Description=AzerothCore Auth Server
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/azerothcore-wotlk
+ExecStart=/usr/bin/tmux new-session -s auth-session './acore.sh run-authserver'
+ExecStop=/usr/bin/tmux kill-session -t auth-session
+RemainAfterExit=yes
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+# /etc/systemd/system/acore-world.service
+[Unit]
+Description=AzerothCore World Server
+After=network.target mysql.service acore-auth.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/azerothcore-wotlk
+ExecStart=/usr/bin/tmux new-session -s world-session './acore.sh run-worldserver'
+ExecStop=/usr/bin/tmux send-keys -t world-session 'server shutdown 5' Enter
+RemainAfterExit=yes
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+systemctl daemon-reload
+systemctl enable acore-auth.service acore-world.service
+```
+
 ### Normal restart
 
 ```bash
