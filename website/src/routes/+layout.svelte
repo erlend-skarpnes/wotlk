@@ -2,7 +2,7 @@
 	import '../app.css';
 	import { DarkMode, Navbar, NavBrand, ThemeProvider, type ThemeConfig, Heading } from 'flowbite-svelte';
 
-	interface ServerStatus { online: boolean; uptimeSeconds: number | null; }
+	interface ServerStatus { worldOnline: boolean; authOnline: boolean; uptimeSeconds: number | null; }
 	let { children, data }: { children: any; data: { serverStatus: ServerStatus } } = $props();
 
 	const theme: ThemeConfig = {
@@ -18,7 +18,8 @@
 		return `${m}m`;
 	}
 
-	const { online, uptimeSeconds } = $derived(data.serverStatus);
+	const { worldOnline, authOnline, uptimeSeconds } = $derived(data.serverStatus);
+	const bothUp = $derived(worldOnline && authOnline);
 </script>
 
 <svelte:head>
@@ -39,7 +40,7 @@
 
 				<!-- Server status badge -->
 				<div class="flex items-center gap-2 text-xs mr-1">
-					{#if online}
+					{#if bothUp}
 						<span class="relative flex h-2 w-2">
 							<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
 							<span class="relative inline-flex h-2 w-2 rounded-full bg-green-500"></span>
@@ -49,7 +50,11 @@
 						</span>
 					{:else}
 						<span class="h-2 w-2 rounded-full bg-red-500"></span>
-						<span class="text-gray-400 hidden sm:inline">Offline</span>
+						<span class="text-gray-400 hidden sm:inline">
+							{#if !worldOnline && !authOnline}Offline
+							{:else if !worldOnline}World offline
+							{:else}Auth offline{/if}
+						</span>
 					{/if}
 				</div>
 
