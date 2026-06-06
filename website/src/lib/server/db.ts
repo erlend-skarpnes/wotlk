@@ -1,5 +1,4 @@
 import mysql from 'mysql2/promise';
-import net from 'net';
 import { env } from '$env/dynamic/private';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -31,9 +30,8 @@ export interface HighscoreEntry {
 }
 
 export interface ServerStatus {
-	worldOnline: boolean;
-	authOnline: boolean;
-	uptimeSeconds: number | null; // null if worldserver is offline
+	online: boolean;
+	uptimeSeconds: number | null; // null if offline
 }
 
 export interface ProfessionEntry {
@@ -2424,38 +2422,34 @@ function mapRow(row: any): Character {
 	};
 }
 
-// ─── Port check ───────────────────────────────────────────────────────────────
-
-function tcpCheck(host: string, port: number, timeoutMs = 2500): Promise<boolean> {
-	return new Promise((resolve) => {
-		const socket = net.createConnection({ host, port });
-		const timer = setTimeout(() => { socket.destroy(); resolve(false); }, timeoutMs);
-		socket.on('connect', () => { clearTimeout(timer); socket.destroy(); resolve(true); });
-		socket.on('error',   () => { clearTimeout(timer); resolve(false); });
-	});
-}
-
 // ─── Queries ──────────────────────────────────────────────────────────────────
 
-/** Live server status: port reachability + worldserver uptime from DB. */
+// The worldserver updates acore_auth.uptime every few minutes while running.
+// If the row is stale by more than 10 minutes, consider the server offline.
+const UPTIME_STALE_THRESHOLD = 600;
+
+/** Live server status derived from the worldserver's uptime heartbeat in the DB. */
 export async function getServerStatus(): Promise<ServerStatus> {
-	const host = 'wow.skarpn.es';
-	const [worldOnline, authOnline, uptimeRow] = await Promise.all([
-		tcpCheck(host, 8085),
-		tcpCheck(host, 3724),
-		pool().query(`
-			SELECT UNIX_TIMESTAMP() - starttime AS uptime_seconds
+	try {
+		const [rows] = await pool().query(`
+			SELECT
+				UNIX_TIMESTAMP() - starttime              AS uptime_seconds,
+				UNIX_TIMESTAMP() - (starttime + uptime)   AS staleness_seconds
 			FROM acore_auth.uptime
 			WHERE realmid = 1
 			ORDER BY starttime DESC
 			LIMIT 1
-		`).then(([rows]) => (rows as any[])[0] ?? null).catch(() => null)
-	]);
-	return {
-		worldOnline,
-		authOnline,
-		uptimeSeconds: worldOnline && uptimeRow ? Number(uptimeRow.uptime_seconds) : null
-	};
+		`);
+		const row = (rows as any[])[0];
+		if (!row) return { online: false, uptimeSeconds: null };
+		const online = Number(row.staleness_seconds) < UPTIME_STALE_THRESHOLD;
+		return {
+			online,
+			uptimeSeconds: online ? Number(row.uptime_seconds) : null
+		};
+	} catch {
+		return { online: false, uptimeSeconds: null };
+	}
 }
 
 /** Characters currently in-game, sorted by level desc. */
