@@ -6,6 +6,7 @@
 		gender: 'Male' | 'Female';
 		class: string;
 		online: boolean;
+		zone: string;
 	}
 
 	interface Account {
@@ -97,6 +98,7 @@
 						<div class="font-semibold text-gray-100 text-base leading-snug">{char.name}</div>
 						<div class="text-xs text-gray-400 mt-0.5">Level {char.level} · {char.race}</div>
 						<div class="text-xs font-medium mt-0.5" style="color:{classColor(char.class)}">{char.class}</div>
+						<div class="text-xs text-gray-500 mt-0.5">📍 {char.zone}</div>
 					</div>
 				</div>
 			{/each}
