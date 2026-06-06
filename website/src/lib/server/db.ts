@@ -29,6 +29,27 @@ export interface HighscoreEntry {
 	achievementCount: number;
 }
 
+export interface ProfessionEntry {
+	rank: number;
+	name: string;
+	race: string;
+	gender: 'Male' | 'Female';
+	class: string;
+	level: number;
+	totalProfLevel: number;
+	profCount: number;
+}
+
+export interface PlaytimeEntry {
+	rank: number;
+	name: string;
+	race: string;
+	gender: 'Male' | 'Female';
+	class: string;
+	level: number;
+	totaltime: number; // seconds
+}
+
 // ─── Connection pool ──────────────────────────────────────────────────────────
 
 function getPool() {
@@ -2443,6 +2464,68 @@ export async function getAchievementHighscores(): Promise<HighscoreEntry[]> {
 		level: Number(row.level),
 		achievementPoints: Number(row.achievement_points),
 		achievementCount: Number(row.achievement_count)
+	}));
+}
+
+// Primary: Alchemy, Blacksmithing, Enchanting, Engineering, Herbalism,
+//          Inscription, Jewelcrafting, Leatherworking, Mining, Skinning, Tailoring
+// Secondary: Cooking, First Aid, Fishing
+const PROFESSION_SKILL_IDS = [171, 164, 333, 202, 182, 773, 755, 165, 186, 393, 197, 185, 129, 356];
+
+/** Profession level leaderboard, top 50 characters sorted by sum of all profession skill values. */
+export async function getProfessionHighscores(): Promise<ProfessionEntry[]> {
+	const ids = PROFESSION_SKILL_IDS.join(',');
+	const [rows] = await pool().query(`
+		SELECT
+			c.name, c.race, c.gender, c.class, c.level,
+			SUM(cs.value)  AS total_prof_level,
+			COUNT(cs.skill) AS prof_count
+		FROM acore_characters.character_skills cs
+		JOIN  acore_characters.characters c  ON c.guid = cs.guid
+		JOIN  acore_auth.account a           ON a.id   = c.account
+		LEFT JOIN acore_auth.account_access aa
+		      ON aa.id = a.id AND aa.RealmID = -1
+		WHERE cs.skill IN (${ids})
+		  AND (aa.gmlevel IS NULL OR aa.gmlevel = 0)
+		  AND a.username NOT LIKE 'RNDBOT%'
+		GROUP BY cs.guid, c.name, c.race, c.gender, c.class, c.level
+		ORDER BY total_prof_level DESC
+		LIMIT 50
+	`);
+	return (rows as any[]).map((row, i) => ({
+		rank: i + 1,
+		name: row.name,
+		race: RACES[row.race] ?? `Race ${row.race}`,
+		gender: row.gender === 0 ? 'Male' : 'Female',
+		class: CLASSES[row.class] ?? `Class ${row.class}`,
+		level: Number(row.level),
+		totalProfLevel: Number(row.total_prof_level),
+		profCount: Number(row.prof_count)
+	}));
+}
+
+/** Playtime leaderboard, top 50 characters sorted by total time played (seconds). */
+export async function getPlaytimeHighscores(): Promise<PlaytimeEntry[]> {
+	const [rows] = await pool().query(`
+		SELECT c.name, c.race, c.gender, c.class, c.level, c.totaltime
+		FROM acore_characters.characters c
+		JOIN  acore_auth.account a  ON a.id = c.account
+		LEFT JOIN acore_auth.account_access aa
+		      ON aa.id = a.id AND aa.RealmID = -1
+		WHERE c.totaltime > 0
+		  AND (aa.gmlevel IS NULL OR aa.gmlevel = 0)
+		  AND a.username NOT LIKE 'RNDBOT%'
+		ORDER BY c.totaltime DESC
+		LIMIT 50
+	`);
+	return (rows as any[]).map((row, i) => ({
+		rank: i + 1,
+		name: row.name,
+		race: RACES[row.race] ?? `Race ${row.race}`,
+		gender: row.gender === 0 ? 'Male' : 'Female',
+		class: CLASSES[row.class] ?? `Class ${row.class}`,
+		level: Number(row.level),
+		totaltime: Number(row.totaltime)
 	}));
 }
 

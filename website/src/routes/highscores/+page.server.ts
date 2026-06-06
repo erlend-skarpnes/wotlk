@@ -1,6 +1,11 @@
 import type { PageServerLoad } from './$types';
-import { getAchievementHighscores } from '$lib/server/db';
+import { getAchievementHighscores, getProfessionHighscores, getPlaytimeHighscores } from '$lib/server/db';
 
 export const load: PageServerLoad = async () => {
-	return { highscores: await getAchievementHighscores() };
+	const [highscores, professions, playtime] = await Promise.all([
+		getAchievementHighscores(),
+		getProfessionHighscores(),
+		getPlaytimeHighscores()
+	]);
+	return { highscores, professions, playtime };
 };
