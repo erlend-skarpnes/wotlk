@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../app.css';
-	import { DarkMode, Navbar, NavBrand, NavUl, NavLi, ThemeProvider, type ThemeConfig, Heading } from 'flowbite-svelte';
+	import { DarkMode, Navbar, NavBrand, ThemeProvider, type ThemeConfig, Heading } from 'flowbite-svelte';
 
 	interface ServerStatus { worldOnline: boolean; authOnline: boolean; uptimeSeconds: number | null; }
 	let { children, data }: { children: any; data: { serverStatus: ServerStatus } } = $props();
@@ -33,10 +33,10 @@
 				<NavBrand href="/">
 					<Heading class="text-2xl">Azeroth</Heading>
 				</NavBrand>
-				<NavUl>
-					<NavLi href="/">Home</NavLi>
-					<NavLi href="/highscores">Highscores</NavLi>
-				</NavUl>
+				<div class="flex items-center gap-1">
+					<a href="/" class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-amber-600 dark:text-gray-300 dark:hover:text-amber-400 transition-colors">Home</a>
+					<a href="/highscores" class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-amber-600 dark:text-gray-300 dark:hover:text-amber-400 transition-colors">Highscores</a>
+				</div>
 
 				<!-- Server status badge -->
 				<div class="flex items-center gap-2 text-xs mr-1">
