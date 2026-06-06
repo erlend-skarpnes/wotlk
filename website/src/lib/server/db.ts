@@ -1,4 +1,5 @@
 import mysql from 'mysql2/promise';
+import net from 'net';
 import { env } from '$env/dynamic/private';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -27,6 +28,12 @@ export interface HighscoreEntry {
 	level: number;
 	achievementPoints: number;
 	achievementCount: number;
+}
+
+export interface ServerStatus {
+	worldOnline: boolean;
+	authOnline: boolean;
+	uptimeSeconds: number | null; // null if worldserver is offline
 }
 
 export interface ProfessionEntry {
@@ -2417,7 +2424,39 @@ function mapRow(row: any): Character {
 	};
 }
 
+// ─── Port check ───────────────────────────────────────────────────────────────
+
+function tcpCheck(host: string, port: number, timeoutMs = 2500): Promise<boolean> {
+	return new Promise((resolve) => {
+		const socket = net.createConnection({ host, port });
+		const timer = setTimeout(() => { socket.destroy(); resolve(false); }, timeoutMs);
+		socket.on('connect', () => { clearTimeout(timer); socket.destroy(); resolve(true); });
+		socket.on('error',   () => { clearTimeout(timer); resolve(false); });
+	});
+}
+
 // ─── Queries ──────────────────────────────────────────────────────────────────
+
+/** Live server status: port reachability + worldserver uptime from DB. */
+export async function getServerStatus(): Promise<ServerStatus> {
+	const host = 'wow.skarpn.es';
+	const [worldOnline, authOnline, uptimeRow] = await Promise.all([
+		tcpCheck(host, 8085),
+		tcpCheck(host, 3724),
+		pool().query(`
+			SELECT UNIX_TIMESTAMP() - starttime AS uptime_seconds
+			FROM acore_auth.uptime
+			WHERE realmid = 1
+			ORDER BY starttime DESC
+			LIMIT 1
+		`).then(([rows]) => (rows as any[])[0] ?? null).catch(() => null)
+	]);
+	return {
+		worldOnline,
+		authOnline,
+		uptimeSeconds: worldOnline && uptimeRow ? Number(uptimeRow.uptime_seconds) : null
+	};
+}
 
 /** Characters currently in-game, sorted by level desc. */
 export async function getOnlineCharacters(): Promise<Character[]> {

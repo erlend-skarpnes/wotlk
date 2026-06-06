@@ -34,6 +34,7 @@ Current grants beyond the default `acore_characters` and `acore_auth` tables:
 | Table | Granted |
 |---|---|
 | `acore_world.website_achievement_points` | ✓ |
+| `acore_auth.uptime` | ✓ |
 
 ## Active Modules
 
