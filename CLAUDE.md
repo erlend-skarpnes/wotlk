@@ -22,23 +22,18 @@ Private AzerothCore (WotLK 3.3.5a) server for a small friend group, focused on s
 
 ### Website DB user (`web`)
 
-The website connects as a read-only `web` user. It only has SELECT grants on specific tables — **when adding a new table the website queries, you must also grant SELECT on it:**
+The website connects as a read-only `web` user with SELECT grants on specific tables — **when adding a table the website queries, also grant SELECT on it:**
 
 ```sql
 GRANT SELECT ON acore_world.<table> TO 'web'@'%';
 FLUSH PRIVILEGES;
 ```
 
-Current grants beyond the default `acore_characters` and `acore_auth` tables:
-
-| Table | Granted |
-|---|---|
-| `acore_world.website_achievement_points` | ✓ |
-| `acore_auth.uptime` | ✓ |
+Current non-default grants: `acore_world.website_achievement_points`, `acore_auth.uptime`, `acore_world.item_template`, `acore_world.creature_loot_template`, `acore_world.creature_template`, `acore_world.gameobject_loot_template`, `acore_world.gameobject_template`.
 
 ## Active Modules
 
-### Third-party (installed on server, not in this repo's `modules/`)
+### Third-party (on server, not in `modules/`)
 
 | Module | Purpose |
 |---|---|
@@ -46,7 +41,7 @@ Current grants beyond the default `acore_characters` and `acore_auth` tables:
 | `mod-aoe-loot` | Installed but **disabled** via `AOELoot.Enable = 0` |
 | `mod-arac` | Allows all races to play all classes (SQL + DBC + client Patch-A.MPQ) |
 
-### Custom (source lives in `modules/` in this repo)
+### Custom (source in `modules/`)
 
 | Module | Purpose |
 |---|---|
@@ -59,69 +54,30 @@ Module config files live in `config/modules/`.
 
 ```
 wotlk/
-├── CLAUDE.md
-├── .env.example
-├── config/
-│   ├── worldserver.conf
-│   ├── authserver.conf
-│   └── modules/
-│       ├── AutoBalance.conf
-│       ├── mod_aoe_loot.conf
-│       └── mod_arac.conf
-├── modules/
-│   ├── skeleton-module/    # canonical template — copy to create a new module
-│   └── mod-alt-level-boost/
-├── sql/
-│   └── migrations/
-│       ├── world/          # patches against acore_world
-│       └── characters/     # patches against acore_characters
+├── config/          # worldserver.conf, authserver.conf, modules/
+├── modules/         # skeleton-module/ (template) + custom modules
+├── sql/migrations/
+│   ├── world/       # patches against acore_world
+│   └── characters/  # patches against acore_characters
 └── scripts/
-    ├── deploy.sh           # apply pending migrations + sync configs
-    ├── rollback.sh         # undo last applied migration
-    └── status.sh           # show applied vs pending migrations
+    ├── deploy.sh    # apply pending migrations + sync configs
+    ├── rollback.sh  # undo last applied migration
+    └── status.sh    # show applied vs pending migrations
 ```
 
 ## Core Patches
 
-Sometimes a feature can't be done purely in a module and requires a small edit to AzerothCore's
-own source. These are stored as unified diffs in `patches/` and **must be applied to the server
-source before building**.
+Source edits that can't live in a module are stored as unified diffs in `patches/` and must be applied before building. Naming: `patches/<NNNN>-<kebab-description>.patch` (sequential, include a reason comment at top).
 
-### Applying a patch
-
-```bash
-# On the server:
-cd ~/azerothcore-wotlk
-git apply < /path/to/patches/0001-my-patch.patch
-# then build as normal
-```
-
-Or via SSH from the repo root:
-
-```bash
-ssh root@azerothcore 'cd ~/azerothcore-wotlk && patch -p1' < patches/0001-my-patch.patch
-```
-
-### Current patches
+Apply via SSH: `ssh root@azerothcore 'cd ~/azerothcore-wotlk && patch -p1' < patches/0001-my-patch.patch`
 
 | File | What it changes |
 |---|---|
-| `patches/0001-configurable-taxi-flight-speed.patch` | Adds `TaxiFlightSpeed` config key to control taxi path velocity (default 32.0, server uses 64.0 for 2×) |
-
-### Naming convention
-
-```
-patches/<NNNN>-<kebab-description>.patch
-```
-
-Numbers are sequential. Always include a comment at the top of the patch describing the reason.
-
----
+| `patches/0001-configurable-taxi-flight-speed.patch` | Adds `TaxiFlightSpeed` config key (default 32.0, server uses 64.0 for 2×) |
 
 ## Custom Modules
 
-Custom C++ modules live in `modules/<mod-name>/` locally and are built on the server under
-`~/azerothcore-wotlk/modules/<mod-name>/`.
+Custom C++ modules live in `modules/<mod-name>/` locally and on the server under `~/azerothcore-wotlk/modules/<mod-name>/`. Use `modules/skeleton-module/` as a starting point.
 
 ### Directory layout
 
@@ -129,15 +85,11 @@ Custom C++ modules live in `modules/<mod-name>/` locally and are built on the se
 modules/mod-my-feature/
 ├── src/
 │   ├── mod_my_feature_loader.cpp   # entry point — required
-│   └── mod_my_feature.cpp          # script implementation(s)
+│   └── mod_my_feature.cpp
 ├── conf/
-│   └── mod_my_feature.conf.dist    # config template (omit if no config needed)
-└── data/
-    └── sql/
-        └── db-world/               # SQL applied by AzerothCore on startup (strings, etc.)
+│   └── mod_my_feature.conf.dist    # omit if no config needed
+└── data/sql/db-world/              # SQL applied by AC on startup
 ```
-
-Use `modules/skeleton-module/` as a starting point — copy it and rename.
 
 ### Naming conventions
 
@@ -145,75 +97,10 @@ Use `modules/skeleton-module/` as a starting point — copy it and rename.
 |---|---|---|
 | Module folder | `mod-<kebab-name>` | `mod-hearthstone-fix` |
 | Loader function | `Add<mod_snake_name>Scripts()` | `Addmod_hearthstone_fixScripts()` |
-| Script classes | `PascalCase`, descriptive | `spell_hearthstone_cooldown_fix` |
-| Conf key prefix | `MyModule.` (or a clear prefix) | `HearthstoneFix.Enable` |
+| Script classes | `PascalCase` | `spell_hearthstone_cooldown_fix` |
+| Conf key prefix | `MyModule.` | `HearthstoneFix.Enable` |
 
-The loader function name is derived by replacing every `-` in the folder name with `_` and
-prepending `Add` + appending `Scripts`. AzerothCore's `ModulesLoader.cpp.in.cmake` generates
-a call to that exact symbol at build time — the name must match exactly.
-
-### `src/<mod>_loader.cpp`
-
-```cpp
-// Forward-declare one function per script file
-void AddMyFeatureScripts();
-
-// Entry point — name must match folder name with '-' → '_'
-void Addmod_my_featureScripts()
-{
-    AddMyFeatureScripts();
-}
-```
-
-### `src/<mod>.cpp` — SpellScript example
-
-```cpp
-#include "Player.h"
-#include "SpellScript.h"
-#include "SpellScriptLoader.h"
-
-class spell_my_fix : public SpellScript
-{
-    PrepareSpellScript(spell_my_fix);
-
-    void HandleAfterCast()
-    {
-        // ...
-    }
-
-    void Register() override
-    {
-        AfterCast += SpellCastFn(spell_my_fix::HandleAfterCast);
-    }
-};
-
-void AddMyFeatureScripts()
-{
-    RegisterSpellScript(spell_my_fix);   // script name = "spell_my_fix"
-}
-```
-
-SpellScripts also need a row in `spell_script_names` (see SQL Migrations below).
-AllCreatureScripts / PlayerScripts / WorldScripts use `new MyClass()` instead of `RegisterSpellScript`.
-
-### `conf/mod_my_feature.conf.dist`
-
-```ini
-[worldserver]
-
-########################################
-# My feature configuration
-########################################
-#
-#    MyFeature.Enable
-#        Default: 1 - Enabled / 0 - Disabled
-#
-
-MyFeature.Enable = 1
-```
-
-Copy `conf/*.conf.dist` → `config/modules/` (without the `.dist`) for repo-tracked overrides
-that get synced to the server by `deploy.sh --all`.
+The loader function name replaces every `-` in the folder name with `_`, prepends `Add`, appends `Scripts`. This must match exactly — AzerothCore generates the call at build time.
 
 ### Build & deploy workflow
 
@@ -221,12 +108,11 @@ that get synced to the server by `deploy.sh --all`.
 # 1. Copy module to server
 scp -r modules/mod-my-feature root@azerothcore:~/azerothcore-wotlk/modules/
 
-# 2. If this is a NEW module (first time), re-run cmake so it gets discovered.
-#    Existing modules don't need this step.
+# 2. NEW module only — re-run cmake so it gets discovered
 ssh root@azerothcore 'cd ~/azerothcore-wotlk/var/build/obj && cmake ~/azerothcore-wotlk'
 
-# 3. Build (use the alias on the server — handles modules + worldserver)
-#    Run this on the server: build
+# 3. Build — tell the user to run this on the server:
+#    build
 
 # 4. Stop server, install binary, restart
 ssh root@azerothcore 'tmux send-keys -t world-session "server shutdown 5" Enter'
@@ -234,46 +120,32 @@ ssh root@azerothcore 'tmux send-keys -t world-session "server shutdown 5" Enter'
 ssh root@azerothcore 'cp ~/azerothcore-wotlk/var/build/obj/src/server/apps/worldserver ~/azerothcore-wotlk/env/dist/bin/worldserver'
 ssh root@azerothcore 'tmux send-keys -t world-session "cd ~/azerothcore-wotlk && ./acore.sh run-worldserver" Enter'
 
-# 5. Apply any SQL migrations
+# 5. Apply SQL migrations
 ./scripts/deploy.sh world
 ```
 
-> **Note:** The `build` alias on the server expands to `cd ~/azerothcore-wotlk; ./acore.sh compiler build`.
-> Do **not** run cmake build commands autonomously over SSH — only tell the user to run `build`.
-
-> **Note:** The simple-restarter relaunches worldserver almost instantly after a clean shutdown
-> (`server restart 5` → exit 0). Use `server shutdown` + manual restart when installing a new binary,
-> or the binary will be busy when you try to copy it.
+> **Do not run cmake/build commands autonomously over SSH** — tell the user to run `build` on the server.
+> Use `server shutdown` + manual restart when installing a new binary (the simple-restarter relaunches instantly on clean exit, so the binary will be busy if you use `server restart`).
 
 ### Disabling a module from the build
 
-`mod-playerbots` is disabled because it has thousands of files and makes builds very slow.
-To disable a module without removing it:
-
 ```bash
 cd ~/azerothcore-wotlk/var/build/obj
-cmake ~/azerothcore-wotlk -DMODULE_MOD-PLAYERBOTS=disabled
+cmake ~/azerothcore-wotlk -DMODULE_MOD-PLAYERBOTS=disabled  # re-enable: =static
 ```
 
-Re-enable with `-DMODULE_MOD-PLAYERBOTS=static`. The cmake variable name is always
-`MODULE_<UPPERCASE-MODULE-NAME>` (hyphens preserved).
+(`mod-playerbots` is disabled — thousands of files make builds very slow.)
 
 ### SQL for SpellScripts
 
-If a script file registers SpellScripts via `RegisterSpellScript(my_class)`, the DB needs to
-know which spell ID maps to which script name. Add a migration pair:
+SpellScripts need a `spell_script_names` row mapping spell ID → script name:
 
 ```sql
--- 0007_up_my_spell_script.sql
-INSERT IGNORE INTO `spell_script_names` (`spell_id`, `ScriptName`)
-VALUES (12345, 'spell_my_fix');
-
--- 0007_down_my_spell_script.sql
-DELETE FROM `spell_script_names` WHERE `spell_id` = 12345 AND `ScriptName` = 'spell_my_fix';
+-- up: INSERT IGNORE INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES (12345, 'spell_my_fix');
+-- down: DELETE FROM `spell_script_names` WHERE `spell_id` = 12345 AND `ScriptName` = 'spell_my_fix';
 ```
 
-The `ScriptName` must be the exact string `RegisterSpellScript` registers — by default that is
-the class name (`#spell_my_fix`).
+`ScriptName` must exactly match the class name passed to `RegisterSpellScript`.
 
 ## SQL Migration System
 
@@ -283,116 +155,31 @@ the class name (`#spell_my_fix`).
 sql/migrations/<db>/<NNNN>_<up|down>_<short_description>.sql
 ```
 
-Rules:
-- Numbers are zero-padded to 4 digits and sequential within each DB folder
-- Every `_up_` file **must** have a matching `_down_` file
-- `_up_` files should be idempotent where possible (use `INSERT IGNORE`, `UPDATE ... WHERE NOT EXISTS`, etc.)
-- `_down_` files must cleanly undo exactly what the `_up_` did
+- Numbers zero-padded to 4 digits, sequential within each DB folder
+- Every `_up_` must have a matching `_down_`
+- `_up_` files should be idempotent (`INSERT IGNORE`, `UPDATE ... WHERE NOT EXISTS`, etc.)
+- `_down_` must cleanly undo exactly what `_up_` did
 
 ### Workflow
 
 ```bash
 ./scripts/status.sh world          # see what's pending
 ./scripts/deploy.sh world          # apply pending migrations
-./scripts/rollback.sh world        # undo last migration (interactive prompt)
-./scripts/rollback.sh world --yes  # skip prompt (used by Claude for testing)
+./scripts/rollback.sh world --yes  # undo last migration (--yes skips prompt)
 ./scripts/deploy.sh --all          # migrations + rsync configs to server
 ```
 
 ### Module SQL dependencies
 
-When a module is installed, always check for SQL files it needs:
+When installing a module, always check for required SQL:
 
 ```bash
 find ~/azerothcore-wotlk/modules/<mod-name>/data/sql -name "*.sql"
 ```
 
-Missing module SQL is a common source of crashes. For example, `mod-aoe-loot` required
-`module_string` entries that were absent — causing a null pointer crash on every login.
-Always apply module SQL via a migration in this repo, not directly.
+Missing module SQL is a common crash source — always apply via a migration, never directly.
 
 ## Server Management
-
-### Nightly restart (cron)
-
-The server restarts automatically at **3am every night** via a cron job on the server:
-
-```
-0 3 * * * /usr/bin/tmux send-keys -t world-session "server restart 5" Enter
-```
-
-> **Note:** This cron job lives only on the server (`crontab -e` as root) — it is not tracked in
-> this repo. If the server is ever rebuilt, re-add it with:
-> ```bash
-> ssh root@azerothcore "(crontab -l 2>/dev/null; echo '0 3 * * * /usr/bin/tmux send-keys -t world-session \"server restart 5\" Enter') | crontab -"
-> ```
-
-### Boot autostart (systemd)
-
-Both servers start automatically on VM boot via systemd units (not tracked in this repo):
-
-| Unit | Controls |
-|---|---|
-| `acore-auth.service` | authserver in `auth-session` |
-| `acore-world.service` | worldserver in `world-session` |
-
-Both are enabled (`WantedBy=multi-user.target`) and start after MySQL. If the VM is rebuilt, recreate them:
-
-```bash
-# /etc/systemd/system/acore-auth.service
-[Unit]
-Description=AzerothCore Auth Server
-After=network.target mysql.service
-Wants=mysql.service
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/root/azerothcore-wotlk
-ExecStart=/usr/bin/tmux new-session -s auth-session './acore.sh run-authserver'
-ExecStop=/usr/bin/tmux kill-session -t auth-session
-RemainAfterExit=yes
-Restart=no
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-# /etc/systemd/system/acore-world.service
-[Unit]
-Description=AzerothCore World Server
-After=network.target mysql.service acore-auth.service
-Wants=mysql.service
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/root/azerothcore-wotlk
-ExecStart=/usr/bin/tmux new-session -s world-session './acore.sh run-worldserver'
-ExecStop=/usr/bin/tmux send-keys -t world-session 'server shutdown 5' Enter
-RemainAfterExit=yes
-Restart=no
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-systemctl daemon-reload
-systemctl enable acore-auth.service acore-world.service
-```
-
-### Normal restart
-
-```bash
-# In the worldserver console (via tmux):
-server restart 5
-```
-
-The server runs under `acore.sh run-worldserver` → `simple-restarter` → `starter` → `worldserver`.
-The restarter loop catches non-zero exits and relaunches automatically. `server restart` exits
-with code 0, which triggers a clean relaunch.
 
 ### Tmux sessions
 
@@ -402,51 +189,21 @@ with code 0, which triggers a clean relaunch.
 | `auth-session` | authserver |
 
 ```bash
-# Attach to worldserver console
 ssh root@azerothcore 'tmux attach -t world-session'
-
-# Send a command without attaching
 ssh root@azerothcore 'tmux send-keys -t world-session "server restart 5" Enter'
 ```
 
-### Debugging crashes (GDB mode)
+The server runs under `acore.sh run-worldserver` → `simple-restarter` → worldserver. `server restart` exits 0, triggering a clean relaunch.
 
-To capture a stack trace on crash, restart with GDB enabled:
+Nightly cron restarts at **3am**. Systemd units auto-start both servers on boot. See `docs/ops.md` for setup details if the VM is ever rebuilt.
 
-```bash
-ssh root@azerothcore 'tmux send-keys -t world-session "server shutdown 5" Enter'
-# wait for shutdown, then:
-ssh root@azerothcore 'tmux send-keys -t world-session "bash ~/azerothcore-wotlk/apps/startup-scripts/src/simple-restarter ~/azerothcore-wotlk/env/dist/bin worldserver ~/azerothcore-wotlk/apps/startup-scripts/src/gdb.conf \"\" \"\" \"\" 1 ~/azerothcore-wotlk/env/dist/bin/crashes" Enter'
-```
+## Conventions
 
-Stack trace is written to `~/azerothcore-wotlk/env/dist/bin/crashes/gdb-crash.txt`.
-
-> **Note:** In GDB mode, `server restart` causes a clean shutdown (exit 0) and the restarter
-> will **not** relaunch. Use `server shutdown` instead, then start manually.
-
-After debugging, switch back to the normal restarter:
-
-```bash
-ssh root@azerothcore 'tmux send-keys -t world-session "cd ~/azerothcore-wotlk && ./acore.sh run-worldserver" Enter'
-```
-
-## Working with Claude
-
-### What I can do
-
-- Write SQL migration pairs (up + down) for any game content changes
-- Create new custom modules using `modules/skeleton-module/` as the template
-- Review and suggest edits to config files
-- Run scripts and SSH commands — I'll always show you the command before executing
-- Debug server crashes using GDB stack traces and logs
-
-### Conventions I follow
-
-- **Always write the `_down_` file before suggesting you run the `_up_`** — rollback first
-- **I won't run destructive commands without explicit confirmation**
-- **Always check if anyone is online before deploying or restarting** — query `characters WHERE online = 1` first; never deploy or restart with players on the server
-- **Config changes go in the repo first**, then get synced — no editing files directly on the server
-- **One migration = one logical change** — I'll split unrelated changes into separate numbered files
-- **Module SQL goes through the migration system** — never apply directly to the server
+- **Always write `_down_` before suggesting `_up_`** — rollback first
+- **Check for online players before deploying or restarting** — query `characters WHERE online = 1`; never disrupt active players
+- **Never run destructive commands without explicit confirmation**
+- **Config changes go in the repo first**, then sync — never edit files directly on the server
+- **One migration = one logical change** — split unrelated changes into separate numbered files
+- **Module SQL goes through the migration system** — never apply directly
 - **Each concern gets its own module** — don't add unrelated scripts to an existing module
-- **Keep the website features section in sync** — whenever a server modification is added, changed, or removed, update the "Server Features" section in `website/src/routes/+page.svelte` to reflect it in player-friendly language
+- **Keep the website in sync** — update `website/src/routes/+page.svelte` "Server Features" section when server behaviour changes

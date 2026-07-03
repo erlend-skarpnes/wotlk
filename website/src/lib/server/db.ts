@@ -2568,6 +2568,73 @@ export async function getPlaytimeHighscores(): Promise<PlaytimeEntry[]> {
 	}));
 }
 
+// ─── Item search ──────────────────────────────────────────────────────────────
+
+export interface ItemSearchResult {
+	id: number;
+	name: string;
+	quality: number; // 0=poor 1=common 2=uncommon 3=rare 4=epic 5=legendary
+}
+
+export interface DropSource {
+	sourceType: 'creature' | 'gameobject';
+	sourceId: number;
+	sourceName: string;
+	chance: number;
+	minCount: number;
+	maxCount: number;
+}
+
+export async function searchItems(query: string): Promise<ItemSearchResult[]> {
+	const [rows] = await pool().query(
+		`SELECT it.entry AS id, it.name, it.Quality AS quality
+		 FROM acore_world.item_template it
+		 WHERE it.name LIKE CONCAT('%', ?, '%')
+		   AND it.Quality > 0
+		   AND (
+		     EXISTS (SELECT 1 FROM acore_world.creature_loot_template clt WHERE clt.Item = it.entry AND clt.Reference = 0 AND clt.Chance > 0)
+		     OR EXISTS (SELECT 1 FROM acore_world.gameobject_loot_template glt WHERE glt.Item = it.entry AND glt.Reference = 0 AND glt.Chance > 0)
+		   )
+		 ORDER BY it.Quality DESC, it.name ASC
+		 LIMIT 25`,
+		[query]
+	);
+	return (rows as any[]).map((row) => ({
+		id: Number(row.id),
+		name: row.name,
+		quality: Number(row.quality)
+	}));
+}
+
+export async function getItemDropSources(itemId: number): Promise<DropSource[]> {
+	const [rows] = await pool().query(
+		`SELECT 'creature' AS sourceType, ct.entry AS sourceId, ct.name AS sourceName,
+		        clt.Chance AS chance, clt.MinCount AS minCount, clt.MaxCount AS maxCount
+		 FROM acore_world.creature_loot_template clt
+		 JOIN acore_world.creature_template ct ON ct.entry = clt.Entry
+		 WHERE clt.Item = ? AND clt.Reference = 0 AND clt.Chance > 0
+
+		 UNION ALL
+
+		 SELECT 'gameobject' AS sourceType, got.entry AS sourceId, got.name AS sourceName,
+		        glt.Chance AS chance, glt.MinCount AS minCount, glt.MaxCount AS maxCount
+		 FROM acore_world.gameobject_loot_template glt
+		 JOIN acore_world.gameobject_template got ON got.entry = glt.Entry
+		 WHERE glt.Item = ? AND glt.Reference = 0 AND glt.Chance > 0
+
+		 ORDER BY chance DESC`,
+		[itemId, itemId]
+	);
+	return (rows as any[]).map((row) => ({
+		sourceType: row.sourceType as 'creature' | 'gameobject',
+		sourceId: Number(row.sourceId),
+		sourceName: row.sourceName,
+		chance: Number(row.chance),
+		minCount: Number(row.minCount),
+		maxCount: Number(row.maxCount)
+	}));
+}
+
 /** All accounts with their characters, sorted by account name then level desc. */
 export async function getRoster(): Promise<Account[]> {
 	const [rows] = await pool().query(`
