@@ -7,6 +7,7 @@
 // via OnDisplayIdChange, which fires after the engine resets scale to 1.0f.
 static constexpr float SCALE_CAT         = 1.8f;
 static constexpr float SCALE_BEAR        = 1.5f;
+static constexpr float SCALE_DIREBEAR    = 1.0f;
 static constexpr float SCALE_FLIGHT      = 1.8f;
 static constexpr float SCALE_MOONKIN     = 0.7f;
 static constexpr float SCALE_TREE        = 0.7f;
@@ -35,8 +36,10 @@ public:
                 player->SetObjectScale(SCALE_CAT);
                 break;
             case FORM_BEAR:
-            case FORM_DIREBEAR:
                 player->SetObjectScale(SCALE_BEAR);
+                break;
+            case FORM_DIREBEAR:
+                player->SetObjectScale(SCALE_DIREBEAR);
                 break;
             case FORM_FLIGHT:
             case FORM_FLIGHT_EPIC:
