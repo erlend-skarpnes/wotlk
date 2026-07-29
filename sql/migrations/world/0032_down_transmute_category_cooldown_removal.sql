@@ -1,0 +1,3 @@
+-- Remove the spell_cooldown_overrides entries for the remaining Category-310 transmute spells.
+DELETE FROM `spell_cooldown_overrides` WHERE `Id` IN
+  (60893,54020,66658,66659,66660,66662,66663,66664,28567,11480,17559,17560,17561,17562,17563,17564,17565,17566,28566,11479,28568,28569,28580,28581,28582,28583,28584,28585,46714);
