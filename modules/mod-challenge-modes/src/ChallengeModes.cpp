@@ -809,37 +809,28 @@ public:
 
     // Direct character_settings lookup for an offline receiver -- ObjectAccessor only
     // sees online players, which missed the most common real violation: mailing gear
-    // from an alt to your own offline Self-Found character.
+    // from an alt to your own offline Self-Found character. Ad-hoc query (not a core
+    // CharacterDatabaseStatements enum value) so it doesn't depend on this server's
+    // fork keeping the same statement ordering as vanilla AzerothCore.
     static bool IsSelfFoundOffline(ObjectGuid guid)
     {
-        CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHAR_SETTINGS);
-        stmt->SetData(0, guid.GetCounter());
-        PreparedQueryResult result = CharacterDatabase.Query(stmt);
+        QueryResult result = CharacterDatabase.Query(
+            "SELECT data FROM character_settings WHERE guid = {} AND source = 'mod-challenge-modes'",
+            guid.GetCounter());
+
         if (!result)
         {
             return false;
         }
 
-        do
+        std::vector<std::string_view> tokens = Acore::Tokenize(result->Fetch()[0].Get<std::string>(), ' ', false);
+        if (tokens.size() <= SETTING_SELF_FOUND)
         {
-            Field* fields = result->Fetch();
-            if (fields[0].Get<std::string>() != "mod-challenge-modes")
-            {
-                continue;
-            }
-
-            std::vector<std::string_view> tokens = Acore::Tokenize(fields[1].Get<std::string>(), ' ', false);
-            if (tokens.size() > SETTING_SELF_FOUND)
-            {
-                if (Optional<uint32> value = Acore::StringTo<uint32>(tokens[SETTING_SELF_FOUND]))
-                {
-                    return *value != 0;
-                }
-            }
             return false;
-        } while (result->NextRow());
+        }
 
-        return false;
+        Optional<uint32> value = Acore::StringTo<uint32>(tokens[SETTING_SELF_FOUND]);
+        return value && *value != 0;
     }
 
     bool OnPlayerCanSendMail(Player* player, ObjectGuid receiverGuid, ObjectGuid /*mailbox*/, std::string& /*subject*/, std::string& /*body*/, uint32 /*money*/, uint32 /*COD*/, Item* /*item*/) override
