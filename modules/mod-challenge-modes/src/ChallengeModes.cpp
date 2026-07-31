@@ -823,7 +823,8 @@ public:
             return false;
         }
 
-        std::vector<std::string_view> tokens = Acore::Tokenize(result->Fetch()[0].Get<std::string>(), ' ', false);
+        std::string data = result->Fetch()[0].Get<std::string>();
+        std::vector<std::string_view> tokens = Acore::Tokenize(data, ' ', false);
         if (tokens.size() <= SETTING_SELF_FOUND)
         {
             return false;
