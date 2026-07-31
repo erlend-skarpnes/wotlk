@@ -942,34 +942,27 @@ static uint32 GetStartTitleForSetting(ChallengeModeSettings setting)
     return 0;
 }
 
-// Local addition (not upstream): rule text shown on the confirm step before a
-// challenge is actually activated (see gobject_challenge_modes::OnGossipSelect).
-static char const* GetChallengeDescription(ChallengeModeSettings setting)
+// Local addition (not upstream): npc_text IDs for the confirm step's header
+// text -- gossip header text is server-driven (unlike CharTitles.dbc, no
+// client patch needed) but only settable via an npc_text ID lookup, not a
+// literal runtime string. Rows live in
+// sql/migrations/world/0035_up_challenge_modes_rule_text.sql.
+static uint32 GetChallengeRuleTextId(ChallengeModeSettings setting)
 {
     switch (setting)
     {
-        case SETTING_HARDCORE:
-            return "Hardcore: death is permanent. When you die you become a ghost forever and will be disconnected on login. No resurrection is possible.";
-        case SETTING_SEMI_HARDCORE:
-            return "Semi-Hardcore: on death, all equipped gear and all carried gold are destroyed. Your character survives. Cannot be combined with Hardcore.";
-        case SETTING_SELF_CRAFTED:
-            return "Self-Crafted: you may only equip gear you crafted yourself. Anything else refuses to equip.";
-        case SETTING_ITEM_QUALITY_LEVEL:
-            return "Item Quality Level: you may only equip Poor or Common quality gear. Uncommon and above refuses to equip.";
-        case SETTING_SLOW_XP_GAIN:
-            return "Slow XP Gain: you receive only 50% of normal experience from all sources.";
-        case SETTING_VERY_SLOW_XP_GAIN:
-            return "Very Slow XP Gain: you receive only 25% of normal experience from all sources. Cannot be combined with Slow XP Gain.";
-        case SETTING_QUEST_XP_ONLY:
-            return "Quest XP Only: you gain experience only from quests. Kills grant no XP to you (your pet still gains reduced XP from kills).";
-        case SETTING_IRON_MAN:
-            return "Iron Man: gear capped at Common quality, no enchants, no potions/flasks/food buffs, no trade skills (except Runeforging/Poisons/Beast Training), no grouping, and talent points reset on level-up. The strictest challenge available.";
-        case SETTING_SELF_FOUND:
-            return "Self-Found: you cannot trade with other players, send or receive mail, or use the guild bank. Everything you use must be found, looted, or crafted by this character alone.";
-        case HARDCORE_DEAD:
-            break;
+        case SETTING_HARDCORE:           return 900001;
+        case SETTING_SEMI_HARDCORE:      return 900002;
+        case SETTING_SELF_CRAFTED:       return 900003;
+        case SETTING_ITEM_QUALITY_LEVEL: return 900004;
+        case SETTING_SLOW_XP_GAIN:       return 900005;
+        case SETTING_VERY_SLOW_XP_GAIN:  return 900006;
+        case SETTING_QUEST_XP_ONLY:      return 900007;
+        case SETTING_IRON_MAN:           return 900008;
+        case SETTING_SELF_FOUND:         return 900009;
+        case HARDCORE_DEAD:              break;
     }
-    return "";
+    return 12669;
 }
 
 // Gossip senders: top-level menu items report SENDER_INFO (show rules + a confirm
@@ -1075,12 +1068,10 @@ public:
         // Step 1: picked a challenge from the main menu -- show the rules and ask to confirm.
         if (sender == CHALLENGE_SENDER_INFO)
         {
-            ChatHandler(player->GetSession()).SendSysMessage(GetChallengeDescription(static_cast<ChallengeModeSettings>(action)));
-
             ClearGossipMenuFor(player);
             AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Yes, begin this challenge", CHALLENGE_SENDER_CONFIRM, action);
             AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Never mind", 0, 0);
-            SendGossipMenuFor(player, 12669, go->GetGUID());
+            SendGossipMenuFor(player, GetChallengeRuleTextId(static_cast<ChallengeModeSettings>(action)), go->GetGUID());
             return true;
         }
 
