@@ -507,7 +507,7 @@ public:
                 if (pItem->GetTemplate() && !pItem->IsEquipped())
                     continue;
                 uint8 slot = pItem->GetSlot();
-                ChatHandler(player->GetSession()).PSendSysMessage("|cffDA70D6%s |cffffffff|Hitem:%d:0:0:0:0:0:0:0:0|h[%s]|h|r", "You have lost your", pItem->GetEntry(), pItem->GetTemplate()->Name1.c_str());
+                ChatHandler(player->GetSession()).PSendSysMessage("|cffDA70D6{} |cffffffff|Hitem:{}:0:0:0:0:0:0:0:0|h[{}]|h|r", "You have lost your", pItem->GetEntry(), pItem->GetTemplate()->Name1.c_str());
                 player->DestroyItem(INVENTORY_SLOT_BAG_0, slot, true);
             }
         }
