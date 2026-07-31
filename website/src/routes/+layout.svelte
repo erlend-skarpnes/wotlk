@@ -37,6 +37,7 @@
 					<a href="/" class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-amber-600 dark:text-gray-300 dark:hover:text-amber-400 transition-colors">Home</a>
 					<a href="/highscores" class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-amber-600 dark:text-gray-300 dark:hover:text-amber-400 transition-colors">Highscores</a>
 					<a href="/items" class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-amber-600 dark:text-gray-300 dark:hover:text-amber-400 transition-colors">Items</a>
+					<a href="/challenges" class="px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-amber-600 dark:text-gray-300 dark:hover:text-amber-400 transition-colors">Challenges</a>
 				</div>
 
 				<!-- Server status badge -->

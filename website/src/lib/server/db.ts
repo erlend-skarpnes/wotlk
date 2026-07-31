@@ -57,6 +57,23 @@ export interface PlaytimeEntry {
 	totaltime: number; // seconds
 }
 
+export interface ChallengeInfo {
+	key: string;
+	name: string;
+	title: string;
+	description: string;
+}
+
+export interface CharacterChallenge {
+	name: string;
+	level: number;
+	race: string;
+	gender: 'Male' | 'Female';
+	class: string;
+	online: boolean;
+	challenges: string[]; // active challenge names, e.g. "Hardcore (deceased)"
+}
+
 // ─── Connection pool ──────────────────────────────────────────────────────────
 
 function getPool() {
@@ -76,6 +93,41 @@ function pool() {
 }
 
 // ─── Game data ────────────────────────────────────────────────────────────────
+
+// mod-challenge-modes (modules/mod-challenge-modes): static rule text mirrors the
+// module's own gossip descriptions -- see ChallengeModes.cpp GetChallengeRuleTextId
+// and sql/migrations/world/0035_up_challenge_modes_rule_text.sql.
+export const CHALLENGES: ChallengeInfo[] = [
+	{ key: 'hardcore', name: 'Hardcore', title: 'the Deathless',
+		description: 'Death is permanent. When you die you become a ghost forever and will be disconnected on login. No resurrection is possible.' },
+	{ key: 'semiHardcore', name: 'Semi-Hardcore', title: 'the Brave',
+		description: 'On death, all equipped gear and all carried gold are destroyed. Your character survives. Cannot be combined with Hardcore.' },
+	{ key: 'selfCrafted', name: 'Self-Crafted', title: 'the Self-Made',
+		description: 'You may only equip gear you crafted yourself. Anything else refuses to equip.' },
+	{ key: 'itemQualityLevel', name: 'Item Quality Level', title: 'the Threadbare',
+		description: 'You may only equip Poor or Common quality gear. Uncommon and above refuses to equip.' },
+	{ key: 'slowXpGain', name: 'Slow XP Gain', title: 'the Steady',
+		description: 'You receive only 50% of normal experience from all sources.' },
+	{ key: 'verySlowXpGain', name: 'Very Slow XP Gain', title: 'the Painstaking',
+		description: 'You receive only 25% of normal experience from all sources. Cannot be combined with Slow XP Gain.' },
+	{ key: 'questXpOnly', name: 'Quest XP Only', title: 'the Diligent',
+		description: 'You gain experience only from quests. Kills grant no XP to you (your pet still gains reduced XP from kills).' },
+	{ key: 'ironMan', name: 'Iron Man', title: 'the Ironclad',
+		description: 'Gear capped at Common quality, no enchants, no potions/flasks/food buffs, no trade skills (except Runeforging/Poisons/Beast Training), no grouping, and talent points reset on level-up. The strictest challenge available.' },
+	{ key: 'selfFound', name: 'Self-Found', title: 'the Self-Found',
+		description: 'You cannot trade with other players, send or receive mail, or use the guild bank. Everything you use must be found, looted, or crafted by this character alone.' }
+];
+
+// Index into the mod-challenge-modes PlayerSetting bitmask (character_settings,
+// source = 'mod-challenge-modes'). Index 8 (HARDCORE_DEAD) is an internal flag,
+// not a real challenge, and is folded into the Hardcore label instead.
+const CHALLENGE_SETTING_INDEX: (string | null)[] = [
+	'Hardcore', 'Semi-Hardcore', 'Self-Crafted', 'Item Quality Level',
+	'Slow XP Gain', 'Very Slow XP Gain', 'Quest XP Only', 'Iron Man',
+	null, 'Self-Found'
+];
+const HARDCORE_DEAD_INDEX = 8;
+const HARDCORE_INDEX = 0;
 
 const RACES: Record<number, string> = {
 	1: 'Human',
@@ -2655,4 +2707,37 @@ export async function getRoster(): Promise<Account[]> {
 		byAccount.get(row.username)!.characters.push(mapRow(row));
 	}
 	return [...byAccount.values()];
+}
+
+/** Characters currently running one or more mod-challenge-modes challenges. */
+export async function getCharacterChallenges(): Promise<CharacterChallenge[]> {
+	const [rows] = await pool().query(`
+		SELECT c.name, c.level, c.race, c.gender, c.class, c.online, cs.data
+		FROM acore_characters.character_settings cs
+		JOIN acore_characters.characters c ON c.guid = cs.guid
+		JOIN acore_auth.account a ON a.id = c.account
+		LEFT JOIN acore_auth.account_access aa ON aa.id = a.id AND aa.RealmID = -1
+		WHERE cs.source = 'mod-challenge-modes'
+		  AND (aa.gmlevel IS NULL OR aa.gmlevel = 0)
+		  AND a.username NOT LIKE 'RNDBOT%'
+		ORDER BY c.name
+	`);
+
+	const result: CharacterChallenge[] = [];
+	for (const row of rows as any[]) {
+		const values = String(row.data).trim().split(/\s+/).map(Number);
+		const isHardcoreDead = values[HARDCORE_DEAD_INDEX] === 1;
+
+		const challenges = CHALLENGE_SETTING_INDEX
+			.map((label, i) => {
+				if (!label || values[i] !== 1) return null;
+				return i === HARDCORE_INDEX && isHardcoreDead ? `${label} (deceased)` : label;
+			})
+			.filter((c): c is string => c !== null);
+
+		if (challenges.length > 0) {
+			result.push({ ...mapRow(row), challenges });
+		}
+	}
+	return result;
 }

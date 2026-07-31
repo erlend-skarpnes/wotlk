@@ -215,6 +215,14 @@
 			</div>
 		</div>
 
+		<div class="bg-gray-800/60 border border-gray-700 rounded-lg px-4 py-3.5 flex gap-3">
+			<span class="text-2xl shrink-0 mt-0.5">🎯</span>
+			<div>
+				<div class="text-sm font-semibold text-gray-100 mb-0.5">Challenges</div>
+				<div class="text-xs text-gray-400">Opt into Hardcore, Iron Man, Self-Found, and more on the <a href="/challenges" class="text-amber-500 hover:underline">challenges page</a> — each grants its own title the moment you begin.</div>
+			</div>
+		</div>
+
 	</div>
 </section>
 
