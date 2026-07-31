@@ -942,6 +942,43 @@ static uint32 GetStartTitleForSetting(ChallengeModeSettings setting)
     return 0;
 }
 
+// Local addition (not upstream): rule text shown on the confirm step before a
+// challenge is actually activated (see gobject_challenge_modes::OnGossipSelect).
+static char const* GetChallengeDescription(ChallengeModeSettings setting)
+{
+    switch (setting)
+    {
+        case SETTING_HARDCORE:
+            return "Hardcore: death is permanent. When you die you become a ghost forever and will be disconnected on login. No resurrection is possible.";
+        case SETTING_SEMI_HARDCORE:
+            return "Semi-Hardcore: on death, all equipped gear and all carried gold are destroyed. Your character survives. Cannot be combined with Hardcore.";
+        case SETTING_SELF_CRAFTED:
+            return "Self-Crafted: you may only equip gear you crafted yourself. Anything else refuses to equip.";
+        case SETTING_ITEM_QUALITY_LEVEL:
+            return "Item Quality Level: you may only equip Poor or Common quality gear. Uncommon and above refuses to equip.";
+        case SETTING_SLOW_XP_GAIN:
+            return "Slow XP Gain: you receive only 50% of normal experience from all sources.";
+        case SETTING_VERY_SLOW_XP_GAIN:
+            return "Very Slow XP Gain: you receive only 25% of normal experience from all sources. Cannot be combined with Slow XP Gain.";
+        case SETTING_QUEST_XP_ONLY:
+            return "Quest XP Only: you gain experience only from quests. Kills grant no XP to you (your pet still gains reduced XP from kills).";
+        case SETTING_IRON_MAN:
+            return "Iron Man: gear capped at Common quality, no enchants, no potions/flasks/food buffs, no trade skills (except Runeforging/Poisons/Beast Training), no grouping, and talent points reset on level-up. The strictest challenge available.";
+        case SETTING_SELF_FOUND:
+            return "Self-Found: you cannot trade with other players, send or receive mail, or use the guild bank. Everything you use must be found, looted, or crafted by this character alone.";
+        case HARDCORE_DEAD:
+            break;
+    }
+    return "";
+}
+
+// Gossip senders: top-level menu items report SENDER_INFO (show rules + a confirm
+// step); the confirm step's "Yes" item reports SENDER_CONFIRM (actually enable it).
+// Anything else (including the confirm step's "Never mind") falls back to
+// rebuilding the main menu.
+constexpr uint32 CHALLENGE_SENDER_INFO    = 1;
+constexpr uint32 CHALLENGE_SENDER_CONFIRM = 2;
+
 class gobject_challenge_modes : public GameObjectScript
 {
 private:
@@ -967,63 +1004,90 @@ public:
         }
     };
 
-    bool OnGossipHello(Player* player, GameObject* go) override
+    static void BuildChallengeMenu(Player* player)
     {
         if (sChallengeModes->challengeEnabled(SETTING_HARDCORE) && !playerSettingEnabled(player, SETTING_HARDCORE) && !playerSettingEnabled(player, SETTING_SEMI_HARDCORE))
         {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Hardcore mode", 0, SETTING_HARDCORE);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Hardcore mode", CHALLENGE_SENDER_INFO, SETTING_HARDCORE);
         }
         if (sChallengeModes->challengeEnabled(SETTING_SEMI_HARDCORE) && !playerSettingEnabled(player, SETTING_HARDCORE) && !playerSettingEnabled(player, SETTING_SEMI_HARDCORE))
         {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Semi-Hardcore mode", 0, SETTING_SEMI_HARDCORE);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Semi-Hardcore mode", CHALLENGE_SENDER_INFO, SETTING_SEMI_HARDCORE);
         }
         if (sChallengeModes->challengeEnabled(SETTING_SELF_CRAFTED) && !playerSettingEnabled(player, SETTING_SELF_CRAFTED) && !playerSettingEnabled(player, SETTING_IRON_MAN))
         {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Self-Crafted mode", 0, SETTING_SELF_CRAFTED);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Self-Crafted mode", CHALLENGE_SENDER_INFO, SETTING_SELF_CRAFTED);
         }
         if (sChallengeModes->challengeEnabled(SETTING_ITEM_QUALITY_LEVEL) && !playerSettingEnabled(player, SETTING_ITEM_QUALITY_LEVEL))
         {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Item Quality Level mode", 0, SETTING_ITEM_QUALITY_LEVEL);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Item Quality Level mode", CHALLENGE_SENDER_INFO, SETTING_ITEM_QUALITY_LEVEL);
         }
         if (sChallengeModes->challengeEnabled(SETTING_SLOW_XP_GAIN) && !playerSettingEnabled(player, SETTING_SLOW_XP_GAIN) && !playerSettingEnabled(player, SETTING_VERY_SLOW_XP_GAIN))
         {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Slow XP Gain mode", 0, SETTING_SLOW_XP_GAIN);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Slow XP Gain mode", CHALLENGE_SENDER_INFO, SETTING_SLOW_XP_GAIN);
         }
         if (sChallengeModes->challengeEnabled(SETTING_VERY_SLOW_XP_GAIN) && !playerSettingEnabled(player, SETTING_SLOW_XP_GAIN) && !playerSettingEnabled(player, SETTING_VERY_SLOW_XP_GAIN))
         {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Very Slow XP Gain mode", 0, SETTING_VERY_SLOW_XP_GAIN);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Very Slow XP Gain mode", CHALLENGE_SENDER_INFO, SETTING_VERY_SLOW_XP_GAIN);
         }
         if (sChallengeModes->challengeEnabled(SETTING_QUEST_XP_ONLY) && !playerSettingEnabled(player, SETTING_QUEST_XP_ONLY))
         {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Quest XP Only mode", 0, SETTING_QUEST_XP_ONLY);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Quest XP Only mode", CHALLENGE_SENDER_INFO, SETTING_QUEST_XP_ONLY);
         }
         if (sChallengeModes->challengeEnabled(SETTING_IRON_MAN) && !playerSettingEnabled(player, SETTING_IRON_MAN) && !playerSettingEnabled(player, SETTING_SELF_CRAFTED))
         {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Iron Man mode", 0, SETTING_IRON_MAN);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Iron Man mode", CHALLENGE_SENDER_INFO, SETTING_IRON_MAN);
         }
         if (sChallengeModes->challengeEnabled(SETTING_SELF_FOUND) && !playerSettingEnabled(player, SETTING_SELF_FOUND))
         {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Self-Found mode", 0, SETTING_SELF_FOUND);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Enable Self-Found mode", CHALLENGE_SENDER_INFO, SETTING_SELF_FOUND);
         }
+    }
+
+    bool OnGossipHello(Player* player, GameObject* go) override
+    {
+        BuildChallengeMenu(player);
         SendGossipMenuFor(player, 12669, go->GetGUID());
         return true;
     }
 
-    bool OnGossipSelect(Player* player, GameObject* /*go*/, uint32 /*sender*/, uint32 action) override
+    bool OnGossipSelect(Player* player, GameObject* go, uint32 sender, uint32 action) override
     {
-        player->UpdatePlayerSetting("mod-challenge-modes", action, 1);
-
-        if (uint32 titleId = GetStartTitleForSetting(static_cast<ChallengeModeSettings>(action)))
+        // Step 2: confirmed -- actually enable the challenge.
+        if (sender == CHALLENGE_SENDER_CONFIRM)
         {
-            if (CharTitlesEntry const* titleInfo = sCharTitlesStore.LookupEntry(titleId))
+            player->UpdatePlayerSetting("mod-challenge-modes", action, 1);
+
+            if (uint32 titleId = GetStartTitleForSetting(static_cast<ChallengeModeSettings>(action)))
             {
-                player->SetTitle(titleInfo);
-                player->SetCurrentTitle(titleInfo);
+                if (CharTitlesEntry const* titleInfo = sCharTitlesStore.LookupEntry(titleId))
+                {
+                    player->SetTitle(titleInfo);
+                    player->SetCurrentTitle(titleInfo);
+                }
             }
+
+            ChatHandler(player->GetSession()).PSendSysMessage("Challenge mode enabled.");
+            CloseGossipMenuFor(player);
+            return true;
         }
 
-        ChatHandler(player->GetSession()).PSendSysMessage("Challenge mode enabled.");
-        CloseGossipMenuFor(player);
+        // Step 1: picked a challenge from the main menu -- show the rules and ask to confirm.
+        if (sender == CHALLENGE_SENDER_INFO)
+        {
+            ChatHandler(player->GetSession()).SendSysMessage(GetChallengeDescription(static_cast<ChallengeModeSettings>(action)));
+
+            ClearGossipMenuFor(player);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Yes, begin this challenge", CHALLENGE_SENDER_CONFIRM, action);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Never mind", 0, 0);
+            SendGossipMenuFor(player, 12669, go->GetGUID());
+            return true;
+        }
+
+        // "Never mind" (or anything else) -- back to the main menu.
+        ClearGossipMenuFor(player);
+        BuildChallengeMenu(player);
+        SendGossipMenuFor(player, 12669, go->GetGUID());
         return true;
     }
 
