@@ -39,6 +39,25 @@ static uint8 MaxBoostLevel(uint8 accountMaxLevel)
     return (accountMaxLevel / 5) * 5;
 }
 
+// Cross-module guard: mod-challenge-modes stores its 9 challenge flags (plus an
+// internal HARDCORE_DEAD flag at index 8) under PlayerSetting source
+// "mod-challenge-modes". Boosting past the climb undermines the point of any of
+// them -- not just the XP-focused ones, since surviving/completing Hardcore or
+// Semi-Hardcore via a shortcut jump defeats the challenge just as much. Queried
+// by string key rather than including ChallengeModes.h, so this module has no
+// hard build dependency on that one being present.
+static bool HasActiveChallenge(Player* player)
+{
+    for (uint32 i = 0; i < 10; ++i)
+    {
+        if (i == 8) // HARDCORE_DEAD -- death-state tracking, not a challenge itself
+            continue;
+        if (player->GetPlayerSetting("mod-challenge-modes", i).value)
+            return true;
+    }
+    return false;
+}
+
 class AltLevelBoostScript : public AllCreatureScript
 {
 public:
@@ -79,7 +98,7 @@ public:
         uint8  playerLevel  = player->GetLevel();
         uint8  nextEligible = ((playerLevel / 5) + 1) * 5;
 
-        if (boostCap >= 5 && nextEligible <= boostCap)
+        if (boostCap >= 5 && nextEligible <= boostCap && !HasActiveChallenge(player))
             AddGossipItemFor(player, GOSSIP_ICON_TRAINER,
                 "I'd like to advance my character's level.",
                 GOSSIP_SENDER_MAIN, ACTION_BOOST_MENU);
@@ -97,6 +116,13 @@ public:
         // ---- Boost submenu ------------------------------------------------
         if (sender == GOSSIP_SENDER_MAIN && action == ACTION_BOOST_MENU)
         {
+            if (HasActiveChallenge(player))
+            {
+                ChatHandler(player->GetSession()).SendSysMessage("Level boosting is disabled while a challenge mode is active.");
+                CloseGossipMenuFor(player);
+                return true;
+            }
+
             ClearGossipMenuFor(player);
 
             uint32 accountId   = player->GetSession()->GetAccountId();
@@ -125,7 +151,7 @@ public:
             uint8  accountMax  = GetAccountMaxLevel(accountId);
             uint8  boostCap    = MaxBoostLevel(accountMax);
 
-            if (targetLevel > player->GetLevel() && targetLevel <= boostCap && targetLevel % 5 == 0)
+            if (targetLevel > player->GetLevel() && targetLevel <= boostCap && targetLevel % 5 == 0 && !HasActiveChallenge(player))
             {
                 player->GiveLevel(targetLevel);
                 player->SetUInt32Value(PLAYER_XP, 0);
