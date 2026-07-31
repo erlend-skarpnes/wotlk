@@ -47,6 +47,7 @@ Current non-default grants: `acore_world.website_achievement_points`, `acore_aut
 |---|---|
 | `mod-alt-level-boost` | Innkeeper gossip: alts can boost to highest-char level in 5-level steps |
 | `mod-gnome-druid-forms` | Custom shapeshift models + per-form scale overrides for Gnome Druids |
+| `mod-challenge-modes` | Fork of [ZhengPeiRu21/mod-challenge-modes](https://github.com/ZhengPeiRu21/mod-challenge-modes) — opt-in permadeath/self-crafted/slow-XP/iron-man challenges via a gossip NPC. Adds a local `SelfFound` mode (blocks trade + mail + guild bank) not present upstream, and grants+equips a custom title on activation for every mode. Requires `EnablePlayerSettings = 1` **and** a client-side `CharTitles.dbc` patch (see module README) — without it the start titles are blank in-game. |
 
 Module config files live in `config/modules/`.
 
@@ -178,6 +179,10 @@ find ~/azerothcore-wotlk/modules/<mod-name>/data/sql -name "*.sql"
 ```
 
 Missing module SQL is a common crash source — always apply via a migration, never directly.
+
+## Database Documentation
+
+`docs/database/overview.md` indexes per-table docs under `docs/database/tables/` (schema, column meanings, source usage, migration history) for tables this server's migrations/modules/website touch. Check there before writing SQL against an unfamiliar table. Notable gotchas already found: `npc_trainer` appears unread by the server core (use `trainer_spell` instead); `module_string`/`module_string_locale` lookups crash on a miss if the caller doesn't guard for it.
 
 ## Server Management
 
