@@ -807,21 +807,58 @@ public:
         return false;
     }
 
+    // Direct character_settings lookup for an offline receiver -- ObjectAccessor only
+    // sees online players, which missed the most common real violation: mailing gear
+    // from an alt to your own offline Self-Found character.
+    static bool IsSelfFoundOffline(ObjectGuid guid)
+    {
+        CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CHAR_SETTINGS);
+        stmt->SetData(0, guid.GetCounter());
+        PreparedQueryResult result = CharacterDatabase.Query(stmt);
+        if (!result)
+        {
+            return false;
+        }
+
+        do
+        {
+            Field* fields = result->Fetch();
+            if (fields[0].Get<std::string>() != "mod-challenge-modes")
+            {
+                continue;
+            }
+
+            std::vector<std::string_view> tokens = Acore::Tokenize(fields[1].Get<std::string>(), ' ', false);
+            if (tokens.size() > SETTING_SELF_FOUND)
+            {
+                if (Optional<uint32> value = Acore::StringTo<uint32>(tokens[SETTING_SELF_FOUND]))
+                {
+                    return *value != 0;
+                }
+            }
+            return false;
+        } while (result->NextRow());
+
+        return false;
+    }
+
     bool OnPlayerCanSendMail(Player* player, ObjectGuid receiverGuid, ObjectGuid /*mailbox*/, std::string& /*subject*/, std::string& /*body*/, uint32 /*money*/, uint32 /*COD*/, Item* /*item*/) override
     {
         if (sChallengeModes->challengeEnabledForPlayer(SETTING_SELF_FOUND, player))
         {
             return false;
         }
-        // Only catches an online receiver - an offline Self-Found character's
-        // mailbox can't be checked without a DB round trip, so that side is
-        // best-effort only.
+
         if (Player* receiver = ObjectAccessor::FindConnectedPlayer(receiverGuid))
         {
             if (sChallengeModes->challengeEnabledForPlayer(SETTING_SELF_FOUND, receiver))
             {
                 return false;
             }
+        }
+        else if (sChallengeModes->enabled() && sChallengeModes->challengeEnabled(SETTING_SELF_FOUND) && IsSelfFoundOffline(receiverGuid))
+        {
+            return false;
         }
         return true;
     }

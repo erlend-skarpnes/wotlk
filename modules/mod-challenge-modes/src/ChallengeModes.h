@@ -13,6 +13,9 @@
 #include "GameObjectAI.h"
 #include "Pet.h"
 #include "ObjectAccessor.h"
+#include "DatabaseEnv.h"
+#include "StringConvert.h"
+#include "Tokenize.h"
 #include <map>
 
 
