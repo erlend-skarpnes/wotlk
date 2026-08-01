@@ -13,6 +13,8 @@
 #include "GameObjectAI.h"
 #include "Pet.h"
 #include "ObjectAccessor.h"
+#include "ObjectMgr.h"
+#include "LootMgr.h"
 #include "DatabaseEnv.h"
 #include "StringConvert.h"
 #include "Tokenize.h"
@@ -54,6 +56,11 @@ public:
     // one-off quest-equip items (e.g. Torch of Retribution for "Set Them Ablaze!"), and
     // similar utility/quest fluff that was never craftable in the first place.
     uint32 selfCraftedMaxItemLevel;
+    // Local addition (not upstream): multiplies the roll chance of any recipe/
+    // pattern/schematic/formula item (ItemTemplate::Class == ITEM_CLASS_RECIPE)
+    // in a Self-Crafted character's loot rolls, since they must craft nearly
+    // everything they wear. Applied via ScriptMgr::GlobalScript::OnItemRoll.
+    float selfCraftedRecipeDropMultiplier;
     float hardcoreXpBonus, semiHardcoreXpBonus, selfCraftedXpBonus, itemQualityLevelXpBonus, questXpOnlyXpBonus, slowXpGainBonus, verySlowXpGainBonus, ironManXpBonus, selfFoundXpBonus;
     std::unordered_map<uint8, uint32> hardcoreTitleRewards, semiHardcoreTitleRewards, selfCraftedTitleRewards, itemQualityLevelTitleRewards, slowXpGainTitleRewards, verySlowXpGainTitleRewards, questXpOnlyTitleRewards, ironManTitleRewards, selfFoundTitleRewards;
     std::unordered_map<uint8, uint32> hardcoreItemRewards, semiHardcoreItemRewards, selfCraftedItemRewards, itemQualityLevelItemRewards, slowXpGainItemRewards, verySlowXpGainItemRewards, questXpOnlyItemRewards, ironManItemRewards, selfFoundItemRewards;

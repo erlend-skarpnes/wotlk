@@ -5,7 +5,14 @@ This module adds the following challenge modes:
 
 - **Hardcore** - Players who die are permanently ghosts and can never be revived.
 - **Semi-Hardcore** - Players who die lose all worn equipment and carried gold.
-- **Self Crafted** - Players can only wear equipment that they have crafted.
+- **Self Crafted** - Players can only wear equipment that they have crafted. Items at or below `SelfCrafted.MaxItemLevel`
+  (default 5) are always allowed regardless of maker *(local relaxation, not upstream)* — covers fishing poles and
+  one-off quest-equip items (e.g. Torch of Retribution for "Set Them Ablaze!") that were never craftable in the first
+  place. Recipe/pattern/schematic loot drops are also boosted by `SelfCrafted.RecipeDropMultiplier` (default 2.0x)
+  for these characters *(local addition, not upstream)*, since they must craft nearly everything they wear — applies
+  to RNG-gated loot only, not trainer-taught or vendor-sold recipes. Known limitation: loot rolls once per corpse
+  using whichever player AC's loot code passes at generation time, so the boost isn't guaranteed to apply to the
+  right character in a mixed group — acceptable given this server's solo/small-group focus.
 - **Item Quality Level** - Players can only wear equipment that is of Normal or Poor quality
 - **Slow XP Gain** - Players receive 0.5x the normal amount of XP.
 - **Very Slow XP Gain** - Players receive 0.25x the normal amount of XP.

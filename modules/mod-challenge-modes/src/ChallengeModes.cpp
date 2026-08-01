@@ -309,6 +309,7 @@ private:
             sChallengeModes->semiHardcoreXpBonus     = sConfigMgr->GetOption<float>("SemiHardcore.XPMultiplier", 1.0f);
             sChallengeModes->selfCraftedXpBonus      = sConfigMgr->GetOption<float>("SelfCrafted.XPMultiplier", 1.0f);
             sChallengeModes->selfCraftedMaxItemLevel = sConfigMgr->GetOption<uint32>("SelfCrafted.MaxItemLevel", 5);
+            sChallengeModes->selfCraftedRecipeDropMultiplier = sConfigMgr->GetOption<float>("SelfCrafted.RecipeDropMultiplier", 2.0f);
             sChallengeModes->itemQualityLevelXpBonus = sConfigMgr->GetOption<float>("ItemQualityLevel.XPMultiplier", 1.0f);
             sChallengeModes->questXpOnlyXpBonus      = sConfigMgr->GetOption<float>("QuestXpOnly.XPMultiplier", 1.0f);
             sChallengeModes->slowXpGainBonus         = sConfigMgr->GetOption<float>("SlowXpGain.XPMultiplier", 0.50f);
@@ -914,6 +915,47 @@ public:
     }
 };
 
+// Local addition (not upstream): boosts recipe/pattern/schematic drop odds for
+// Self-Crafted characters, since they must craft nearly everything they wear.
+// Hooks the loot-roll chance directly (loot rolls once per corpse, not per
+// viewer -- see LootStoreItem::Roll in AC's LootMgr.cpp) rather than trying to
+// duplicate/conditionalize loot_template rows via the DB condition system.
+// Known limitation: in a group, the "player" context this hook receives at
+// roll time is whichever player AC's loot code passes at generation (typically
+// the looter/kill-credit owner), not every group member independently -- a
+// Self-Crafted character grouped with others may not always get the boost.
+// Acceptable given this server's solo/small-group focus.
+class ChallengeMode_SelfCrafted_RecipeDrops : public GlobalScript
+{
+public:
+    ChallengeMode_SelfCrafted_RecipeDrops() : GlobalScript("ChallengeMode_SelfCrafted_RecipeDrops") {}
+
+    bool OnItemRoll(Player const* player, LootStoreItem const* LootStoreItem, float& chance, Loot& /*loot*/, LootStore const& /*store*/) override
+    {
+        if (!player || !LootStoreItem)
+        {
+            return true;
+        }
+
+        // challengeEnabledForPlayer only reads player state (GetPlayerSetting),
+        // never mutates it -- const_cast is safe here.
+        Player* p = const_cast<Player*>(player);
+        if (!sChallengeModes->challengeEnabledForPlayer(SETTING_SELF_CRAFTED, p))
+        {
+            return true;
+        }
+
+        ItemTemplate const* itemTemplate = sObjectMgr->GetItemTemplate(LootStoreItem->itemid);
+        if (!itemTemplate || itemTemplate->Class != ITEM_CLASS_RECIPE)
+        {
+            return true;
+        }
+
+        chance *= sChallengeModes->selfCraftedRecipeDropMultiplier;
+        return true;
+    }
+};
+
 // Local addition (not upstream): titles granted immediately on challenge activation
 // (not via the level-based TitleRewards map -- challenges are toggled at level 1,
 // before any level-up event would fire) so other players can see at a glance which
@@ -1112,4 +1154,5 @@ void AddSC_mod_challenge_modes()
     new ChallengeMode_IronMan();
     new ChallengeMode_SelfFound();
     new ChallengeMode_SelfFound_GuildBank();
+    new ChallengeMode_SelfCrafted_RecipeDrops();
 }
