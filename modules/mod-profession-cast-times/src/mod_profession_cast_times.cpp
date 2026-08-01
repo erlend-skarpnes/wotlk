@@ -5,10 +5,10 @@
 #include "WorldScript.h"
 #include "Log.h"
 
-// Replace long cooldowns on profession-cooldown crafting spells with a 60-second cast time.
-// SpellCastTimes.dbc ID 208 = 60000ms base, no per-level scaling, 60000ms minimum.
+// Replace long cooldowns on profession-cooldown crafting spells with a 10-second cast time.
+// SpellCastTimes.dbc ID 7 = 10000ms base, no per-level scaling, 10000ms minimum.
 // Cooldowns are removed via spell_cooldown_overrides (migration 0017).
-static constexpr uint32 CAST_TIME_ENTRY_60S = 208;
+static constexpr uint32 CAST_TIME_ENTRY_10S = 7;
 
 static const uint32 PROFESSION_SPELL_IDS[] = {
     17187,  // Transmute: Arcanite
@@ -33,10 +33,10 @@ public:
 
     void OnStartup() override
     {
-        SpellCastTimesEntry const* castEntry = sSpellCastTimesStore.LookupEntry(CAST_TIME_ENTRY_60S);
+        SpellCastTimesEntry const* castEntry = sSpellCastTimesStore.LookupEntry(CAST_TIME_ENTRY_10S);
         if (!castEntry)
         {
-            LOG_ERROR("module", "mod-profession-cast-times: SpellCastTimes entry {} not found — no cast times applied", CAST_TIME_ENTRY_60S);
+            LOG_ERROR("module", "mod-profession-cast-times: SpellCastTimes entry {} not found — no cast times applied", CAST_TIME_ENTRY_10S);
             return;
         }
 
@@ -52,7 +52,7 @@ public:
             const_cast<SpellInfo*>(spellInfo)->CastTimeEntry = castEntry;
             ++count;
         }
-        LOG_INFO("module", "mod-profession-cast-times: Applied 60s cast time to {} profession spells", count);
+        LOG_INFO("module", "mod-profession-cast-times: Applied 10s cast time to {} profession spells", count);
     }
 };
 
