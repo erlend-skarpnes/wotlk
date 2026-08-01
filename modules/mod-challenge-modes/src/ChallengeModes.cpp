@@ -904,6 +904,16 @@ public:
 
     bool CanGuildSendBankList(Guild const* /*guild*/, WorldSession* session, uint8 /*tabId*/, bool /*sendAllSlots*/) override
     {
+        // session is nullptr for Guild::_SendBankContentUpdate's broadcast-to-all-open-
+        // windows path (fires after any bank item move, by any member) -- Guild.cpp
+        // default-args this to nullptr and calls it that way from _SendBankContentUpdate.
+        // Not guarding this crashed the game for every member's bank item move, not just
+        // Self-Found ones.
+        if (!session)
+        {
+            return true;
+        }
+
         if (Player* player = session->GetPlayer())
         {
             if (sChallengeModes->challengeEnabledForPlayer(SETTING_SELF_FOUND, player))
