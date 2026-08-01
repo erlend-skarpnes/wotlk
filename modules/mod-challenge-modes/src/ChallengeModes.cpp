@@ -308,6 +308,7 @@ private:
             sChallengeModes->hardcoreXpBonus         = sConfigMgr->GetOption<float>("Hardcore.XPMultiplier", 1.0f);
             sChallengeModes->semiHardcoreXpBonus     = sConfigMgr->GetOption<float>("SemiHardcore.XPMultiplier", 1.0f);
             sChallengeModes->selfCraftedXpBonus      = sConfigMgr->GetOption<float>("SelfCrafted.XPMultiplier", 1.0f);
+            sChallengeModes->selfCraftedMaxItemLevel = sConfigMgr->GetOption<uint32>("SelfCrafted.MaxItemLevel", 5);
             sChallengeModes->itemQualityLevelXpBonus = sConfigMgr->GetOption<float>("ItemQualityLevel.XPMultiplier", 1.0f);
             sChallengeModes->questXpOnlyXpBonus      = sConfigMgr->GetOption<float>("QuestXpOnly.XPMultiplier", 1.0f);
             sChallengeModes->slowXpGainBonus         = sConfigMgr->GetOption<float>("SlowXpGain.XPMultiplier", 0.50f);
@@ -533,6 +534,14 @@ public:
     bool OnPlayerCanEquipItem(Player* player, uint8 /*slot*/, uint16& /*dest*/, Item* pItem, bool /*swap*/, bool /*not_loading*/) override
     {
         if (!sChallengeModes->challengeEnabledForPlayer(SETTING_SELF_CRAFTED, player))
+        {
+            return true;
+        }
+        // Fishing poles, one-off quest-equip items (e.g. Torch of Retribution for
+        // "Set Them Ablaze!"), and similar utility/quest fluff were never craftable
+        // in the first place -- let anything trivial enough through regardless of
+        // who made it.
+        if (pItem->GetTemplate()->ItemLevel <= sChallengeModes->selfCraftedMaxItemLevel)
         {
             return true;
         }
