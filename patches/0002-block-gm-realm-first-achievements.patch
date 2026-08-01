@@ -1,0 +1,21 @@
+# Reason: GM/admin accounts could complete "Realm First!" achievements while
+# playing/testing on their GM-flagged account, permanently occupying that
+# realm-first slot for a character that isn't a real player run. Core already
+# excludes GM accounts from *locking* realm-firsts for others
+# (AccountMgr::IsPlayerAccount check before SetRealmCompleted), but nothing
+# stopped the GM character itself from earning and displaying the achievement.
+# This blocks the criteria from ever completing for non-player-security
+# accounts, matching the existing guard used at grant time.
+--- a/src/server/game/Achievements/AchievementMgr.cpp
++++ b/src/server/game/Achievements/AchievementMgr.cpp
+@@ -1825,6 +1825,10 @@
+
+     if (achievement->flags & (ACHIEVEMENT_FLAG_REALM_FIRST_REACH | ACHIEVEMENT_FLAG_REALM_FIRST_KILL))
+     {
++        // GM/admin accounts must never be able to claim a 'Realm First!' achievement
++        if (!AccountMgr::IsPlayerAccount(_player->GetSession()->GetSecurity()))
++            return false;
++
+         // someone on this realm has already completed that achievement
+         if (sAchievementMgr->IsRealmCompleted(achievement))
+             return false;
